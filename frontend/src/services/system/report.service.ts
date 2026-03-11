@@ -1,0 +1,72 @@
+import api from '@/lib/axios';
+
+export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
+
+// ─── Sales ────────────────────────────────────────────────
+export interface SalesKpi {
+    totalRevenue: number;
+    totalCost: number;
+    totalOrders: number;
+}
+export interface SalesTrendItem {
+    month: string;
+    revenue: number;
+    cost: number;
+}
+export interface TopProductItem {
+    name: string;
+    quantity: number;
+    revenue: number;
+}
+export interface SalesReport {
+    kpi: SalesKpi;
+    trend: SalesTrendItem[];
+    topProducts: TopProductItem[];
+}
+
+// ─── Inventory ────────────────────────────────────────────
+export interface InventoryKpi {
+    totalProducts: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+}
+export interface InventoryByCategoryItem {
+    name: string;
+    inStock: number;
+    lowStock: number;
+    outOfStock: number;
+}
+export interface InventoryReport {
+    kpi: InventoryKpi;
+    byCategory: InventoryByCategoryItem[];
+}
+
+// ─── Customers ────────────────────────────────────────────
+export interface CustomersKpi {
+    totalCustomers: number;
+    newThisPeriod: number;
+}
+export interface CustomersByMonthItem {
+    month: string;
+    newCustomers: number;
+}
+export interface CustomersReport {
+    kpi: CustomersKpi;
+    byMonth: CustomersByMonthItem[];
+}
+
+// ─── Service ──────────────────────────────────────────────
+export const ReportService = {
+    async getSalesReport(period: ReportPeriod = 'month'): Promise<SalesReport> {
+        const res = await api.get('/reports/sales', { params: { period } });
+        return res.data.data;
+    },
+    async getInventoryReport(): Promise<InventoryReport> {
+        const res = await api.get('/reports/inventory');
+        return res.data.data;
+    },
+    async getCustomersReport(period: ReportPeriod = 'month'): Promise<CustomersReport> {
+        const res = await api.get('/reports/customers', { params: { period } });
+        return res.data.data;
+    },
+};
