@@ -2,7 +2,7 @@ export class UserResponseDto {
     id: string;
     email: string;
     fullName: string;
-    phoneNumber: string;
+    phoneNumber: string | null;
     status: string;
     baseSalary?: number;
     salaryType?: string;

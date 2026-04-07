@@ -1,0 +1,19 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install dependencies for development
+RUN npm install --legacy-peer-deps
+
+# In development mode, we don't build.
+# The code and .next folder will be managed through volume mapping.
+
+EXPOSE 3000
+
+ENV PORT 3000
+# set hostname to 0.0.0.0 to be accessible from outside
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["npm", "run", "dev"]

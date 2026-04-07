@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PayrollController } from '../../presentation/controllers/payroll.controller';
-import { PayrollService } from '../../application/use-cases/payroll.service';
-import { PayrollRepository } from '../../infrastructure/database/repositories/payroll.repository';
+import { PayrollController } from '../../presentation/controllers/hrm/payroll.controller';
+import { PayrollService } from '../../application/use-cases/hrm/payroll.service';
+import { PayrollRepository } from '../../infrastructure/database/repositories/hrm/payroll.repository';
 import { Payroll } from '../../infrastructure/database/entities/hrm/payroll.entity';
 import { AuthModule } from '../../infrastructure/auth/auth.module';
 import { AttendanceModule } from '../attendance/attendance.module';

@@ -4,7 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
-import { UserRepository } from '../database/repositories/user.repository';
+import { UserRepository } from '../database/repositories/iam/user.repository';
 import { User } from '../database/entities/iam/user.entity';
 import { Role } from '../database/entities/iam/role.entity';
 import { Permission } from '../database/entities/iam/permission.entity';

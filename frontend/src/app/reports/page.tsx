@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCcw, TrendingUp, TrendingDown, Package, Users, ShoppingCart, Loader2 } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, Package, Users, ShoppingCart, Loader2, Download } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -12,8 +12,9 @@ import {
   ReportService, ReportPeriod,
   SalesReport, InventoryReport, CustomersReport
 } from '@/services/system/report.service';
+import { toast } from 'sonner';
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 const fmtCurrency = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 const fmtNum = (n: number) =>
@@ -201,6 +202,7 @@ export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<string>('sales');
   const [period, setPeriod] = useState<ReportPeriod>('month');
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [salesData, setSalesData] = useState<SalesReport | null>(null);
   const [inventoryData, setInventoryData] = useState<InventoryReport | null>(null);
   const [customersData, setCustomersData] = useState<CustomersReport | null>(null);
@@ -222,6 +224,37 @@ export default function ReportsPage() {
     }
   }, []);
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      let blob: Blob;
+      let filename = `Bao-cao-${activeTab}-${period}.xlsx`;
+      
+      if (activeTab === 'sales') {
+        blob = await ReportService.exportSalesReport(period);
+      } else if (activeTab === 'inventory') {
+        blob = await ReportService.exportInventoryReport();
+        filename = 'Bao-cao-ton-kho.xlsx';
+      } else {
+        blob = await ReportService.exportCustomersReport(period);
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Xuất file Excel thành công!');
+    } catch (err) {
+      console.error('Export failed', err);
+      toast.error('Xuất file thất bại!');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   useEffect(() => {
     fetchData(activeTab, period);
   }, [activeTab, period, fetchData]);
@@ -242,7 +275,7 @@ export default function ReportsPage() {
         {/* Tab + filter bar */}
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 gap-3">
-            <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
               {TABS.map(tab => (
                 <motion.button
                   key={tab.id}
@@ -274,6 +307,21 @@ export default function ReportsPage() {
                   {r.label}
                 </motion.button>
               ))}
+
+              <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+              <motion.button
+                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-medium rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
+                onClick={handleExport}
+                disabled={isExporting}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                title='Xuất Excel'
+              >
+                {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                <span className="hidden xs:inline">Xuất Excel</span>
+              </motion.button>
+
               <motion.button
                 className="p-1.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                 onClick={() => fetchData(activeTab, period)}

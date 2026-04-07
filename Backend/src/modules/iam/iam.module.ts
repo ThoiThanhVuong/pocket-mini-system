@@ -5,26 +5,26 @@ import { User } from '../../infrastructure/database/entities/iam/user.entity';
 // Auth Infra
 import { AuthModule } from '../../infrastructure/auth/auth.module';
 import { BcryptService } from '../../infrastructure/external-services/bcrypt.service';
-import { HashingServiceKey } from '../../core/interfaces/services/hashing.service.interface';
+import { HashingServiceKey } from '../../core/interfaces/services/iam/hashing.service.interface';
 
 // Application Logic
-import { AuthenticationService } from '../../application/use-cases/authentication.service';
-import { AuthenticationServiceKey } from '../../core/interfaces/services/auth.service.interface';
+import { AuthenticationService } from '../../application/use-cases/iam/authentication.service';
+import { AuthenticationServiceKey } from '../../core/interfaces/services/iam/auth.service.interface';
 
 // Presentation
-import { AuthenticationController } from '../../presentation/controllers/authentication.controller';
+import { AuthenticationController } from '../../presentation/controllers/iam/authentication.controller';
 
 // Repositories
-import { UserRepository } from '../../infrastructure/database/repositories/user.repository';
-import { RoleRepository } from '../../infrastructure/database/repositories/role.repository';
-import { PermissionRepository } from '../../infrastructure/database/repositories/permission.repository';
+import { UserRepository } from '../../infrastructure/database/repositories/iam/user.repository';
+import { RoleRepository } from '../../infrastructure/database/repositories/iam/role.repository';
+import { PermissionRepository } from '../../infrastructure/database/repositories/iam/permission.repository';
 
 import { Role } from '../../infrastructure/database/entities/iam/role.entity';
 import { Permission } from '../../infrastructure/database/entities/iam/permission.entity';
 
-import { IamController } from '../../presentation/controllers/iam.controller';
-import { IamService } from '../../application/use-cases/iam.service';
-import { IamServiceKey } from '../../core/interfaces/services/iam.service.interface';
+import { IamController } from '../../presentation/controllers/iam/iam.controller';
+import { IamService } from '../../application/use-cases/iam/iam.service';
+import { IamServiceKey } from '../../core/interfaces/services/iam/iam.service.interface';
 
 @Module({
   imports: [

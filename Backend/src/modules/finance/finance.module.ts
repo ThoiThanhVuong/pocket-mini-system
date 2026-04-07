@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payment } from '../../infrastructure/database/entities/finance/payment.entity';
 
-import { PaymentRepository } from '../../infrastructure/database/repositories/payment.repository';
-import { IPaymentRepositoryKey } from '../../application/use-cases/payment.service';
-import { PaymentService } from '../../application/use-cases/payment.service';
-import { IPaymentServiceKey } from '../../core/interfaces/services/payment.service.interface';
-import { PaymentController } from '../../presentation/controllers/payment.controller';
+import { PaymentRepository } from '../../infrastructure/database/repositories/finance/payment.repository';
+import { IPaymentRepositoryKey } from '../../application/use-cases/finance/payment.service';
+import { PaymentService } from '../../application/use-cases/finance/payment.service';
+import { IPaymentServiceKey } from '../../core/interfaces/services/finance/payment.service.interface';
+import { PaymentController } from '../../presentation/controllers/finance/payment.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Payment])],

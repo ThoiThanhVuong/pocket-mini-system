@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+# Install dependencies for development
+RUN npm install --legacy-peer-deps
+
+# No build step here, code will be mounted from local via Volume
+# We'll rely on npm run start:dev for hot reload
+
+EXPOSE 4000
+
+CMD ["npm", "run", "start:dev"]

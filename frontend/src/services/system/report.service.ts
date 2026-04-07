@@ -69,4 +69,16 @@ export const ReportService = {
         const res = await api.get('/reports/customers', { params: { period } });
         return res.data.data;
     },
+    async exportSalesReport(period: ReportPeriod = 'month'): Promise<Blob> {
+        const res = await api.get('/reports/sales/export', { params: { period }, responseType: 'blob' });
+        return res.data;
+    },
+    async exportInventoryReport(): Promise<Blob> {
+        const res = await api.get('/reports/inventory/export', { responseType: 'blob' });
+        return res.data;
+    },
+    async exportCustomersReport(period: ReportPeriod = 'month'): Promise<Blob> {
+        const res = await api.get('/reports/customers/export', { params: { period }, responseType: 'blob' });
+        return res.data;
+    },
 };

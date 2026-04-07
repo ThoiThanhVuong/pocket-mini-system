@@ -8,13 +8,11 @@ export class Email {
 
     private validate(email: string): void {
         if (!email) {
-            throw new Error('Email should not be empty');
+            throw new Error('Email không được để trống.');
         }
-        
-        // Simple regex for demonstration
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            throw new Error('Invalid email format');
+            throw new Error('Email không đúng định dạng (Ví dụ: example@gmail.com).');
         }
     }
 
@@ -27,6 +25,6 @@ export class Email {
     }
 
     public toString(): string {
-        return this.value;
+        return this.value || '';
     }
 }

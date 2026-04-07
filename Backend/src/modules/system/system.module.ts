@@ -4,40 +4,40 @@ import { AuditLog } from '../../infrastructure/database/entities/system/auditLog
 import { Note } from '../../infrastructure/database/entities/system/note.entity';
 
 import { SystemConfig } from '../../infrastructure/database/entities/system-config.entity';
-import { SystemConfigService } from './services/system-config.service';
+import { SystemConfigService } from '../../application/use-cases/system/system-config.service';
 
 // Controllers
-import { SystemConfigController } from './controllers/system-config.controller';
-import { UploadController } from './controllers/upload.controller';
-import { DashboardController } from '../../presentation/controllers/dashboard.controller';
-import { ReportController } from '../../presentation/controllers/report.controller';
-import { AuditLogController } from '../../presentation/controllers/audit.controller';
-import { NoteController } from '../../presentation/controllers/note.controller';
+import { SystemConfigController } from '../../presentation/controllers/system/system-config.controller';
+import { UploadController } from '../../presentation/controllers/system/upload.controller';
+import { DashboardController } from '../../presentation/controllers/system/dashboard.controller';
+import { ReportController } from '../../presentation/controllers/system/report.controller';
+import { AuditLogController } from '../../presentation/controllers/system/audit.controller';
+import { NoteController } from '../../presentation/controllers/system/note.controller';
 
 // Services (application layer)
-import { DashboardService } from '../../application/use-cases/dashboard.service';
-import { ReportService } from '../../application/use-cases/report.service';
+import { DashboardService } from '../../application/use-cases/system/dashboard.service';
+import { ReportService } from '../../application/use-cases/system/report.service';
 
-import { DashboardRepository } from '../../infrastructure/database/repositories/dashboard.repository';
-import { ReportRepository } from '../../infrastructure/database/repositories/report.repository';
-import { AuditLogRepository } from '../../infrastructure/database/repositories/audit-log.repository';
-import { NoteRepository } from '../../infrastructure/database/repositories/note.repository';
+import { DashboardRepository } from '../../infrastructure/database/repositories/system/dashboard.repository';
+import { ReportRepository } from '../../infrastructure/database/repositories/system/report.repository';
+import { AuditLogRepository } from '../../infrastructure/database/repositories/system/audit-log.repository';
+import { NoteRepository } from '../../infrastructure/database/repositories/system/note.repository';
 
 // Services (application layer - continued)
-import { AuditService } from '../../application/use-cases/audit.service';
-import { NoteService } from '../../application/use-cases/note.service';
+import { AuditService } from '../../application/use-cases/system/audit.service';
+import { NoteService } from '../../application/use-cases/system/note.service';
 
-import { IDashboardRepositoryKey } from '../../core/interfaces/repositories/dashboard.repository.interface';
-import { IReportRepositoryKey } from '../../core/interfaces/repositories/report.repository.interface';
-import { IAuditLogRepositoryKey } from '../../core/interfaces/repositories/audit-log.repository.interface';
-import { INoteRepositoryKey } from '../../core/interfaces/repositories/note.repository.interface';
+import { IDashboardRepositoryKey } from '../../core/interfaces/repositories/system/dashboard.repository.interface';
+import { IReportRepositoryKey } from '../../core/interfaces/repositories/system/report.repository.interface';
+import { IAuditLogRepositoryKey } from '../../core/interfaces/repositories/system/audit-log.repository.interface';
+import { INoteRepositoryKey } from '../../core/interfaces/repositories/system/note.repository.interface';
 
 // Tokens (services)
-import { IDashboardServiceKey } from '../../core/interfaces/services/dashboard.service.interface';
-import { IReportServiceKey } from '../../core/interfaces/services/report.service.interface';
-import { IAuditServiceKey } from '../../core/interfaces/services/audit.service.interface';
-import { INoteServiceKey } from '../../core/interfaces/services/note.service.interface';
-import { ExcelService } from '../../application/use-cases/excel.service';
+import { IDashboardServiceKey } from '../../core/interfaces/services/system/dashboard.service.interface';
+import { IReportServiceKey } from '../../core/interfaces/services/system/report.service.interface';
+import { IAuditServiceKey } from '../../core/interfaces/services/system/audit.service.interface';
+import { INoteServiceKey } from '../../core/interfaces/services/system/note.service.interface';
+import { ExcelService } from '../../application/use-cases/system/excel.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([AuditLog, Note, SystemConfig])],
@@ -63,6 +63,6 @@ import { ExcelService } from '../../application/use-cases/excel.service';
     { provide: IAuditServiceKey,        useClass: AuditService },
     { provide: INoteServiceKey,         useClass: NoteService },
   ],
-  exports: [SystemConfigService, IAuditServiceKey, INoteServiceKey, ExcelService],
+  exports: [SystemConfigService, IAuditServiceKey, INoteServiceKey, ExcelService, IReportServiceKey],
 })
 export class SystemModule {}

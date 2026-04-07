@@ -6,16 +6,16 @@ import { Product } from '../../infrastructure/database/entities/warehouse/produc
 import { Category } from '../../infrastructure/database/entities/warehouse/category.entity';
 
 // Category
-import { CategoryController } from '../../presentation/controllers/category.controller';
-import { CategoryService } from '../../application/use-cases/category.service';
-import { CategoryRepository } from '../../infrastructure/database/repositories/category.repository';
-import { ICategoryServiceKey } from '../../core/interfaces/services/category.service.interface';
+import { CategoryController } from '../../presentation/controllers/inventory/category.controller';
+import { CategoryService } from '../../application/use-cases/inventory/category.service';
+import { CategoryRepository } from '../../infrastructure/database/repositories/inventory/category.repository';
+import { ICategoryServiceKey } from '../../core/interfaces/services/inventory/category.service.interface';
 
 // Product
-import { ProductController } from '../../presentation/controllers/product.controller';
-import { ProductService } from '../../application/use-cases/product.service';
-import { ProductRepository } from '../../infrastructure/database/repositories/product.repository';
-import { IProductServiceKey } from '../../core/interfaces/services/product.service.interface';
+import { ProductController } from '../../presentation/controllers/inventory/product.controller';
+import { ProductService } from '../../application/use-cases/inventory/product.service';
+import { ProductRepository } from '../../infrastructure/database/repositories/inventory/product.repository';
+import { IProductServiceKey } from '../../core/interfaces/services/inventory/product.service.interface';
 
 // Cross-module
 import { InventoryModule } from '../inventory/inventory.module';

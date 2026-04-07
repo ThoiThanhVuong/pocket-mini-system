@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, MinLength, IsPhoneNumber } from 'class-validator';
 
 export class CreateUserDto {
     @IsEmail()
@@ -13,6 +13,7 @@ export class CreateUserDto {
     fullName: string;
 
     @IsOptional()
+    @IsPhoneNumber('VN', { message: 'Số điện thoại không hợp lệ (định dạng Việt Nam).' })
     phoneNumber?: string;
 
     @IsOptional()

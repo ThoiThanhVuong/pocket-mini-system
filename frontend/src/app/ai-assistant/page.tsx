@@ -1,53 +1,117 @@
 "use client";
 
 import React, { Component } from 'react';
+import { aiAssistantService } from '@/services/system/ai-assistant.service';
+import { AiMessage, AiAssistantState, SuggestionChipProps } from '@/types/system/ai-assistant.types';
 import { motion } from 'framer-motion';
 import {
   Send,
   User,
   Bot,
-  TrendingUp,
-  AlertTriangle,
-  RefreshCw,
   Lightbulb,
-  ChevronRight } from
+  ChevronRight,
+  Trash2,
+  MessageSquare,
+  MoreVertical,
+  Plus } from
 'lucide-react';
+import { toast } from 'sonner';
 
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'assistant';
-  timestamp: Date;
-}
-interface AiAssistantState {
-  messages: Message[];
-  input: string;
-  isTyping: boolean;
-}
+
 export default class AiAssistantPage extends Component<{}, AiAssistantState> {
   private messagesEndRef: React.RefObject<HTMLDivElement | null>;
   private typingTimeout: NodeJS.Timeout | null = null;
+  private getGreetingMessage(): AiMessage {
+    return {
+      id: 'greeting',
+      content: "Dạ em đây sếp! Sếp cần tính kho, phân tích doanh thu hay tư vấn chiến lược thì cứ giao cho em nhé.",
+      sender: 'assistant',
+      timestamp: new Date()
+    };
+  }
+
   constructor(props: {}) {
     super(props);
     this.state = {
-      messages: [
-      {
-        id: '1',
-        content:
-        "Hello! I'm your AI assistant. I can help you with inventory management, sales analysis, and business recommendations. How can I help you today?",
-        sender: 'assistant',
-        timestamp: new Date()
-      }],
-
+      messages: [this.getGreetingMessage()],
       input: '',
-      isTyping: false
+      isTyping: false,
+      threads: [],
+      currentThreadId: null
     };
     this.messagesEndRef = React.createRef();
   }
-  componentDidMount() {
+  async componentDidMount() {
     this.scrollToBottom();
+    await this.loadThreads();
   }
+
+  loadThreads = async () => {
+    try {
+      const threads = await aiAssistantService.getThreads();
+      this.setState({ threads });
+      
+      // Mặc định load thread gần nhất nếu chưa chọn gì
+      if (threads.length > 0 && !this.state.currentThreadId) {
+        this.handleSelectThread(threads[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load threads:', error);
+    }
+  };
+
+  handleSelectThread = async (threadId: string) => {
+    this.setState({ currentThreadId: threadId, messages: [], isTyping: true });
+    try {
+      const historyData = await aiAssistantService.getHistory(threadId);
+      if (historyData && historyData.length > 0) {
+        const historyMessages: AiMessage[] = historyData.map((m: any, idx: number) => ({
+          id: `hist-${idx}-${Date.now()}`,
+          content: m.content,
+          sender: m.role as 'user' | 'assistant',
+          timestamp: new Date(m.createdAt)
+        }));
+        this.setState({ messages: historyMessages, isTyping: false });
+      } else {
+        this.setState({ messages: [this.getGreetingMessage()], isTyping: false });
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      this.setState({ isTyping: false });
+    }
+  };
+
+  handleNewChat = () => {
+    this.setState({
+      currentThreadId: null,
+      messages: [this.getGreetingMessage()],
+      input: '',
+      isTyping: false
+    });
+  };
+
+  handleDeleteThread = async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation();
+    try {
+      const success = await aiAssistantService.deleteThread(threadId);
+      if (success) {
+        toast.success("Đã xóa đoạn chat");
+        const threads = await aiAssistantService.getThreads();
+        this.setState({ threads });
+        
+        if (this.state.currentThreadId === threadId) {
+          this.handleNewChat();
+        }
+      } else {
+        toast.error("Không thể xóa đoạn chat");
+      }
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xóa.");
+    }
+  };
+
   componentDidUpdate() {
+
     this.scrollToBottom();
   }
   scrollToBottom = () => {
@@ -60,12 +124,12 @@ export default class AiAssistantPage extends Component<{}, AiAssistantState> {
       input: e.target.value
     });
   };
-  handleSubmit = (e: React.FormEvent) => {
+  handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const { input, messages } = this.state;
     if (!input.trim()) return;
     // Add user message
-    const userMessage: Message = {
+    const userMessage: AiMessage = {
       id: Date.now().toString(),
       content: input,
       sender: 'user',
@@ -76,71 +140,125 @@ export default class AiAssistantPage extends Component<{}, AiAssistantState> {
       input: '',
       isTyping: true
     });
-    // Simulate AI response after a delay
-    this.typingTimeout = setTimeout(() => {
-      const aiMessage: Message = {
+    
+    // Call Backend API via Service
+    try {
+      const responseMessage = await aiAssistantService.chat(input, this.state.currentThreadId || undefined);
+      
+      const wasNewChat = !this.state.currentThreadId;
+
+      const aiMessage: AiMessage = {
         id: (Date.now() + 1).toString(),
-        content: this.getAIResponse(input),
+        content: responseMessage || 'Lỗi: Không nhận được phản hồi',
+        sender: 'assistant',
+        timestamp: new Date()
+      };
+      
+      this.setState((prevState) => ({
+        messages: [...prevState.messages, aiMessage],
+        isTyping: false
+      }), async () => {
+         if (wasNewChat) {
+             const threads = await aiAssistantService.getThreads();
+             this.setState({ threads });
+             if (threads.length > 0) {
+                 this.setState({ currentThreadId: threads[0].id });
+             }
+         }
+      });
+    } catch (error) {
+      console.error('Lỗi khi gọi AI API:', error);
+      const errorMessage: AiMessage = {
+        id: (Date.now() + 1).toString(),
+        content: 'Xin lỗi, tôi đã gặp sự cố khi kết nối tới hệ thống máy chủ.',
         sender: 'assistant',
         timestamp: new Date()
       };
       this.setState((prevState) => ({
-        messages: [...prevState.messages, aiMessage],
+        messages: [...prevState.messages, errorMessage],
         isTyping: false
       }));
-    }, 1500);
+    }
   };
+
   componentWillUnmount() {
     if (this.typingTimeout) {
       clearTimeout(this.typingTimeout);
     }
   }
-  getAIResponse(input: string): string {
-    // Simple response logic - in a real app this would call an API
-    const inputLower = input.toLowerCase();
-    if (inputLower.includes('inventory') || inputLower.includes('stock')) {
-      return "Based on your current inventory levels, I've noticed that USB-C cables are running low. Consider reordering within the next week to avoid stockouts.";
-    } else if (inputLower.includes('sales') || inputLower.includes('revenue')) {
-      return 'Your sales have increased by 12% compared to last month. Your best-selling category is Electronics, with Wireless Headphones as the top product.';
-    } else if (
-    inputLower.includes('customer') ||
-    inputLower.includes('clients'))
-    {
-      return "You've gained 48 new customers this month. Customer retention rate is at 68%, which is 5% higher than the previous quarter.";
-    } else {
-      return "I'm here to help with your business needs. You can ask me about inventory levels, sales performance, customer analytics, or for general business recommendations.";
-    }
-  }
+
+  // removed handleClearChat as it is now handleNewChat / handleDeleteThread
+
   render() {
-    const { messages, input, isTyping } = this.state;
+    const { messages, input, isTyping, threads, currentThreadId } = this.state;
     return (
       <div className="container mx-auto">
         <motion.div
-          initial={{
-            opacity: 0,
-            y: -20
-          }}
-          animate={{
-            opacity: 1,
-            y: 0
-          }}
-          transition={{
-            duration: 0.5
-          }}
-          className="mb-6">
-
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-            AI Assistant
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Get insights and recommendations for your business
-          </p>
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+              AI Assistant
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Chuyên gia phân tích và trợ lý toàn năng
+            </p>
+          </div>
         </motion.div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          
+          {/* SIDEBAR LỊCH SỬ CHAT */}
+          <div className="lg:col-span-1 flex flex-col h-[600px] bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+              <button
+                onClick={this.handleNewChat}
+                className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors shadow-sm text-sm font-medium"
+              >
+                <Plus size={16} />
+                <span>Tạo Chat Mới</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">Các đoạn chat của bạn</h3>
+              {threads.length === 0 ? (
+                <p className="text-sm text-gray-500 px-2">Không có lịch sử</p>
+              ) : (
+                <div className="space-y-1">
+                  {threads.map(thread => (
+                    <div 
+                      key={thread.id}
+                      onClick={() => this.handleSelectThread(thread.id)}
+                      className={`group flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${currentThreadId === thread.id ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <MessageSquare size={14} className="text-gray-400 min-w-max" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate" title={thread.title}>{thread.title || 'Đoạn chat chưa có tên'}</span>
+                      </div>
+                      <button 
+                         onClick={(e) => this.handleDeleteThread(e, thread.id)}
+                         className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                         title="Xóa đoạn chat này"
+                      >
+                         <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* CHAT AREA */}
+          <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[600px]">
+
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
+
                   {messages.map((message, index) =>
                   <motion.div
                     key={message.id}
@@ -276,166 +394,11 @@ export default class AiAssistantPage extends Component<{}, AiAssistantState> {
               </div>
             </div>
           </div>
-          <div className="space-y-6">
-            <motion.div
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5"
-              initial={{
-                opacity: 0,
-                y: 20
-              }}
-              animate={{
-                opacity: 1,
-                y: 0
-              }}
-              transition={{
-                duration: 0.3,
-                delay: 0.2
-              }}>
-
-              <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">
-                AI Recommendations
-              </h3>
-              <RecommendationCard
-                icon={
-                <TrendingUp
-                  size={20}
-                  className="text-green-600 dark:text-green-400" />
-
-                }
-                title="Sales Opportunity"
-                content="Based on current trends, consider bundling Wireless Headphones with Phone Cases for increased sales."
-                iconBg="bg-green-100 dark:bg-green-900/30" />
-
-              <RecommendationCard
-                icon={
-                <AlertTriangle
-                  size={20}
-                  className="text-amber-600 dark:text-amber-400" />
-
-                }
-                title="Inventory Alert"
-                content="USB-C Cables inventory is low. Consider reordering within the next 7 days."
-                iconBg="bg-amber-100 dark:bg-amber-900/30" />
-
-              <RecommendationCard
-                icon={
-                <RefreshCw
-                  size={20}
-                  className="text-blue-600 dark:text-blue-400" />
-
-                }
-                title="Process Optimization"
-                content="Your order processing time has increased by 15%. Consider reviewing your workflow."
-                iconBg="bg-blue-100 dark:bg-blue-900/30" />
-
-            </motion.div>
-            <motion.div
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5"
-              initial={{
-                opacity: 0,
-                y: 20
-              }}
-              animate={{
-                opacity: 1,
-                y: 0
-              }}
-              transition={{
-                duration: 0.3,
-                delay: 0.4
-              }}>
-
-              <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">
-                Business Insights
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Customer Satisfaction
-                  </div>
-                  <div className="text-sm font-medium text-gray-800 dark:text-white">
-                    92%
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <motion.div
-                    className="bg-green-500 h-2 rounded-full"
-                    initial={{
-                      width: 0
-                    }}
-                    animate={{
-                      width: '92%'
-                    }}
-                    transition={{
-                      duration: 1,
-                      delay: 0.5
-                    }} />
-
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Inventory Turnover
-                  </div>
-                  <div className="text-sm font-medium text-gray-800 dark:text-white">
-                    78%
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <motion.div
-                    className="bg-blue-500 h-2 rounded-full"
-                    initial={{
-                      width: 0
-                    }}
-                    animate={{
-                      width: '78%'
-                    }}
-                    transition={{
-                      duration: 1,
-                      delay: 0.6
-                    }} />
-
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    Order Fulfillment
-                  </div>
-                  <div className="text-sm font-medium text-gray-800 dark:text-white">
-                    85%
-                  </div>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <motion.div
-                    className="bg-purple-500 h-2 rounded-full"
-                    initial={{
-                      width: 0
-                    }}
-                    animate={{
-                      width: '85%'
-                    }}
-                    transition={{
-                      duration: 1,
-                      delay: 0.7
-                    }} />
-
-                </div>
-              </div>
-              <motion.button
-                className="w-full mt-4 text-sm text-blue-600 dark:text-blue-400 flex items-center justify-center"
-                whileHover={{
-                  scale: 1.03
-                }}>
-
-                View Detailed Analytics{' '}
-                <ChevronRight size={16} className="ml-1" />
-              </motion.button>
-            </motion.div>
-          </div>
         </div>
       </div>);
 
+
   }
-}
-interface SuggestionChipProps {
-  text: string;
 }
 class SuggestionChip extends Component<SuggestionChipProps> {
   render() {
@@ -453,33 +416,6 @@ class SuggestionChip extends Component<SuggestionChipProps> {
 
         {text}
       </motion.button>);
-
-  }
-}
-interface RecommendationCardProps {
-  icon: React.ReactNode;
-  title: string;
-  content: string;
-  iconBg: string;
-}
-class RecommendationCard extends Component<RecommendationCardProps> {
-  render() {
-    const { icon, title, content, iconBg } = this.props;
-    return (
-      <motion.div
-        className="flex items-start mb-4 last:mb-0"
-        whileHover={{
-          x: 5
-        }}>
-
-        <div className={`${iconBg} p-2 rounded-full mr-3 flex-shrink-0`}>
-          {icon}
-        </div>
-        <div>
-          <h4 className="font-medium text-gray-800 dark:text-white">{title}</h4>
-          <p className="text-sm text-gray-600 dark:text-gray-300">{content}</p>
-        </div>
-      </motion.div>);
 
   }
 }

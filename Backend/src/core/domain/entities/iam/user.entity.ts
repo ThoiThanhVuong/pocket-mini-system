@@ -8,7 +8,7 @@ import { SalaryType } from '../../enums/salary-type.enum';
 
 export class User extends BaseEntity {
     private _email: Email;
-    private _phoneNumber: string;
+    private _phoneNumber: string | null;
     private _fullName: string;
     private _passwordHash: string;
     private _status: UserStatus;
@@ -20,7 +20,7 @@ export class User extends BaseEntity {
     constructor(
         id: string,
         email: Email,
-        phoneNumber: string,
+        phoneNumber: string | null,
         fullName: string,
         passwordHash: string,
         status: UserStatus = UserStatus.ACTIVE,
@@ -59,7 +59,7 @@ export class User extends BaseEntity {
 
     // Encapsulation - Getters only (or setters with business rules)
     get email(): string { return this._email.getValue(); }
-    get phoneNumber(): string { return this._phoneNumber; }
+    get phoneNumber(): string | null { return this._phoneNumber; }
     get fullName(): string { return this._fullName; }
     get passwordHash(): string { return this._passwordHash; }
     get status(): UserStatus { return this._status; }

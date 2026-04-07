@@ -10,8 +10,23 @@ import { FinanceModule } from './modules/finance/finance.module';
 
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
+import { AiAssistantModule } from './modules/ai-assistant/ai-assistant.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [AppConfigModule, DatabaseModule, IamModule, AttendanceModule, PayrollModule, CatalogModule, InventoryModule, PartnersModule, SystemModule, FinanceModule],
+  imports: [
+    AppConfigModule, 
+    DatabaseModule, 
+    IamModule, 
+    AttendanceModule, 
+    PayrollModule, 
+    CatalogModule, 
+    InventoryModule, 
+    PartnersModule, 
+    SystemModule, 
+    FinanceModule, 
+    AiAssistantModule,
+    ScheduleModule.forRoot()
+  ],
 })
 export class AppModule {}

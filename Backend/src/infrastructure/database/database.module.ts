@@ -2,6 +2,7 @@ import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import { DatabaseSeeder } from './database.seeder';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { DataSource } from 'typeorm';
       },
     }),
   ],
+  providers: [DatabaseSeeder],
 })
 export class DatabaseModule implements OnModuleInit {
   private readonly logger = new Logger(DatabaseModule.name);

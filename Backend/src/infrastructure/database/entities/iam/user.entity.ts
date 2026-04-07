@@ -41,7 +41,7 @@ export class User extends BaseEntity {
   })
   roles: Role[];
 
-  @ManyToMany(() => Warehouse)
+  @ManyToMany(() => Warehouse, warehouse => warehouse.users)
   @JoinTable({
     name: 'user_warehouses',
     joinColumn: { name: 'user_id', referencedColumnName: 'id' },

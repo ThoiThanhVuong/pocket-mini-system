@@ -2,14 +2,14 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Supplier } from '../../infrastructure/database/entities/partners/supplier.entity';
 import { Customer } from '../../infrastructure/database/entities/partners/customer.entity';
-import { CustomerController } from '../../presentation/controllers/customer.controller';
-import { SupplierController } from '../../presentation/controllers/supplier.controller';
-import { CustomerService } from '../../application/use-cases/customer.service';
-import { SupplierService } from '../../application/use-cases/supplier.service';
-import { CustomerRepository } from '../../infrastructure/database/repositories/customer.repository';
-import { SupplierRepository } from '../../infrastructure/database/repositories/supplier.repository';
-import { ICustomerServiceKey } from '../../core/interfaces/services/customer.service.interface';
-import { ISupplierServiceKey } from '../../core/interfaces/services/supplier.service.interface';
+import { CustomerController } from '../../presentation/controllers/partners/customer.controller';
+import { SupplierController } from '../../presentation/controllers/partners/supplier.controller';
+import { CustomerService } from '../../application/use-cases/partners/customer.service';
+import { SupplierService } from '../../application/use-cases/partners/supplier.service';
+import { CustomerRepository } from '../../infrastructure/database/repositories/partners/customer.repository';
+import { SupplierRepository } from '../../infrastructure/database/repositories/partners/supplier.repository';
+import { ICustomerServiceKey } from '../../core/interfaces/services/partners/customer.service.interface';
+import { ISupplierServiceKey } from '../../core/interfaces/services/partners/supplier.service.interface';
 import { SystemModule } from '../system/system.module';
 
 @Module({
@@ -25,6 +25,6 @@ import { SystemModule } from '../system/system.module';
     { provide: ICustomerServiceKey, useClass: CustomerService},
     { provide: ISupplierServiceKey, useClass: SupplierService}
   ],
-  exports: [CustomerService, SupplierService, ICustomerServiceKey, ISupplierServiceKey]
+  exports: [CustomerService, SupplierService, ICustomerServiceKey, ISupplierServiceKey, 'ISupplierRepository']
 })
 export class PartnersModule {}

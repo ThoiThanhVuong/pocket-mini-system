@@ -71,62 +71,87 @@ export const SlipPrintLayout: React.FC<SlipPrintLayoutProps> = ({ type, data, co
   const totalAmount = (data.items || []).reduce((acc: number, item: any) => acc + (Number(item.quantity) * (Number(item.price) || Number(item.unitPrice) || 0)), 0);
 
   return (
-    <div className="print-container p-8 bg-white text-black font-serif text-sm leading-relaxed" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto' }}>
+    <div className="print-container p-10 bg-white text-black font-sans text-xs leading-snug" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', boxSizing: 'border-box' }}>
       <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-container, .print-container * { visibility: visible; }
-          .print-container { position: absolute; left: 0; top: 0; width: 100%; border: none !important; }
-          @page { size: A4; margin: 10mm; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        .print-container {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
         }
-        .print-table th, .print-table td { border: 1px solid black; padding: 4px 8px; }
-        .print-table { border-collapse: collapse; width: 100%; }
+        @media print {
+          @page { size: A4; margin: 0; }
+          body { margin: 0; padding: 0; }
+          .print-container { 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            padding: 15mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+          .no-print { display: none !important; }
+        }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 6px 4px; }
+        .print-table { border-collapse: collapse; width: 100%; font-size: 11px; }
+        .logo-placeholder { 
+            width: 60px; 
+            height: 60px; 
+            border: 1px dashed #ccc; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 5px;
+        }
       `}</style>
 
-      {/* Header */}
-      <div className="flex justify-between mb-6">
-        <div>
-          <p className="font-bold uppercase">Đơn vị: {companyInfo?.name || 'Pocket Mini System'}</p>
-          <p>Địa chỉ: {companyInfo?.address || '................................................'}</p>
+      {/* Header with Logo */}
+      <div className="flex justify-between items-start mb-8">
+        <div className="flex gap-4">
+          <div className="logo-placeholder">LOGO</div>
+          <div>
+            <p className="font-bold text-sm uppercase leading-tight">{companyInfo?.name || 'POCKET MINI SYSTEM'}</p>
+            <p className="text-[10px] italic">Giải pháp quản lý kho thông minh</p>
+            <p className="text-[10px]">Địa chỉ: {companyInfo?.address || '................................................'}</p>
+          </div>
         </div>
-        <div className="text-center">
-          <p className="font-bold">Mẫu số {mẫuSố}</p>
-          <p className="text-xs">(Ban hành theo Thông tư số 200/2014/TT-BTC</p>
-          <p className="text-xs">Ngày 22/12/2014 của Bộ Tài chính)</p>
+        <div className="text-right">
+          <p className="font-bold text-sm">Mẫu số: {mẫuSố}</p>
+          <p className="text-[10px]">(Ban hành theo Thông tư số 200/2014/TT-BTC</p>
+          <p className="text-[10px]">Ngày 22/12/2014 của Bộ Tài chính)</p>
         </div>
       </div>
 
       {/* Title */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold mb-1">{title}</h1>
-        <p className="italic">Ngày {currentDate.getDate()} tháng {currentDate.getMonth() + 1} năm {currentDate.getFullYear()}</p>
-        <div className="flex justify-center gap-8 mt-2">
-            <p>Số: <span className="font-bold">{data.referenceCode || data.id?.slice(0, 8)}</span></p>
+      <div className="text-center mb-8">
+        <h1 className="text-xl font-bold mb-1 tracking-widest">{title}</h1>
+        <p className="italic text-[11px]">Ngày {currentDate.getDate()} tháng {currentDate.getMonth() + 1} năm {currentDate.getFullYear()}</p>
+        <div className="flex justify-center gap-12 mt-3 font-semibold">
+            <p>Số: <span>{data.referenceCode || data.id?.slice(0, 8).toUpperCase()}</span></p>
             <p>Nợ: ........</p>
             <p>Có: ........</p>
         </div>
       </div>
 
       {/* Info Sections */}
-      <div className="space-y-2 mb-6">
-        <p>- Họ và tên người {type === 'IN' ? 'giao' : 'nhận'}: {data.customerName || data.supplierName || '................................................'}</p>
-        <p>- Lý do {type === 'IN' ? 'nhập' : 'xuất'}: {data.notes || '................................................'}</p>
-        <p>- {type === 'IN' ? 'Nhập' : 'Xuất'} tại kho: <span className="font-bold">{data.warehouseName || '................'}</span> - Địa điểm: ................................</p>
+      <div className="space-y-1.5 mb-6 text-[12px]">
+        <p><span className="w-48 inline-block">- Họ và tên người {type === 'IN' ? 'giao' : 'nhận'}:</span> <span className="font-bold">{data.customerName || data.supplierName || '................................................'}</span></p>
+        <p><span className="w-48 inline-block">- Lý do {type === 'IN' ? 'nhập' : 'xuất'}:</span> {data.notes || '................................................'}</p>
+        <p><span className="w-48 inline-block">- {type === 'IN' ? 'Nhập' : 'Xuất'} tại kho:</span> <span className="font-bold">{data.warehouseName || '................'}</span></p>
       </div>
 
       {/* Table */}
-      <table className="print-table mb-6">
+      <table className="print-table mb-4">
         <thead>
-          <tr className="text-center font-bold bg-gray-50">
-            <th style={{ width: '40px' }}>STT</th>
-            <th>Tên, nhãn hiệu, quy cách, phẩm chất hàng hóa</th>
-            <th style={{ width: '80px' }}>Mã số</th>
-            <th style={{ width: '60px' }}>ĐVT</th>
-            <th style={{ width: '70px' }}>Số lượng</th>
-            <th style={{ width: '100px' }}>Đơn giá</th>
-            <th style={{ width: '120px' }}>Thành tiền</th>
+          <tr className="text-center font-bold bg-gray-100 italic">
+            <th style={{ width: '5%' }}>STT</th>
+            <th style={{ width: '35%' }}>Tên, nhãn hiệu, quy cách hàng hóa</th>
+            <th style={{ width: '12%' }}>Mã số</th>
+            <th style={{ width: '8%' }}>ĐVT</th>
+            <th style={{ width: '10%' }}>Số lượng</th>
+            <th style={{ width: '15%' }}>Đơn giá</th>
+            <th style={{ width: '15%' }}>Thành tiền</th>
           </tr>
-          <tr className="text-xs italic text-center">
+          <tr className="text-[9px] text-center bg-gray-50">
             <td>A</td>
             <td>B</td>
             <td>C</td>
@@ -140,60 +165,64 @@ export const SlipPrintLayout: React.FC<SlipPrintLayoutProps> = ({ type, data, co
           {(data.items || []).map((item: any, index: number) => (
             <tr key={index}>
               <td className="text-center">{index + 1}</td>
-              <td>{item.productName || item.product?.name || 'Sản phẩm ' + item.productId}</td>
-              <td className="text-center">{item.productSku || item.product?.sku || item.productId?.slice(0,6)}</td>
+              <td className="pl-2 font-medium">{item.productName || item.product?.name || 'Sản phẩm ' + item.productId}</td>
+              <td className="text-center">{item.productSku || item.product?.sku || item.productId?.slice(0,6).toUpperCase()}</td>
               <td className="text-center">{item.unit || 'Cái'}</td>
-              <td className="text-center">{item.quantity}</td>
-              <td className="text-right">{(Number(item.price) || Number(item.unitPrice) || 0).toLocaleString()}</td>
-              <td className="text-right">{(Number(item.quantity) * (Number(item.price) || Number(item.unitPrice) || 0)).toLocaleString()}</td>
+              <td className="text-center font-bold">{item.quantity}</td>
+              <td className="text-right pr-2">{(Number(item.price) || Number(item.unitPrice) || 0).toLocaleString()}</td>
+              <td className="text-right pr-2 font-bold">{(Number(item.quantity) * (Number(item.price) || Number(item.unitPrice) || 0)).toLocaleString()}</td>
             </tr>
           ))}
-          {/* Fill empty rows if needed to make it look like the form */}
-          {Array.from({ length: Math.max(0, 5 - (data.items?.length || 0)) }).map((_, i) => (
+          {/* Fill empty rows to maintain structure */}
+          {Array.from({ length: Math.max(0, 8 - (data.items?.length || 0)) }).map((_, i) => (
             <tr key={'empty-' + i} style={{ height: '24px' }}>
               <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
             </tr>
           ))}
-          <tr className="font-bold">
-            <td colSpan={6} className="text-right uppercase">Cộng:</td>
-            <td className="text-right">{totalAmount.toLocaleString()}</td>
+          <tr className="font-bold bg-gray-50">
+            <td colSpan={6} className="text-right pr-4 uppercase text-[10px]">Cộng tiền hàng:</td>
+            <td className="text-right pr-2">{totalAmount.toLocaleString()}</td>
           </tr>
         </tbody>
       </table>
 
       {/* Summary */}
-      <div className="space-y-2 mb-10">
+      <div className="space-y-1.5 mb-10 text-[12px]">
         <p>- Tổng số tiền viết bằng chữ: <span className="italic font-bold">{numberToVietnameseText(totalAmount)}</span></p>
         <p>- Số chứng từ gốc kèm theo: ........................................................................</p>
       </div>
 
       {/* Signatures */}
-      <div className="grid grid-cols-5 text-center text-xs space-y-0">
+      <div className="grid grid-cols-5 text-center text-[10px] leading-tight">
         <div className="flex flex-col">
           <p className="font-bold">Người lập phiếu</p>
-          <p className="italic mb-16">(Ký, họ tên)</p>
-          <p>{user?.fullName || '................'}</p>
+          <p className="italic mb-20">(Ký, họ tên)</p>
+          <p className="font-bold">{user?.fullName || '................'}</p>
         </div>
         <div className="flex flex-col">
           <p className="font-bold">Người {type === 'IN' ? 'giao' : 'nhận'} hàng</p>
-          <p className="italic mb-16">(Ký, họ tên)</p>
+          <p className="italic mb-20">(Ký, họ tên)</p>
+          <p className="font-bold text-white">.</p>
         </div>
         <div className="flex flex-col">
           <p className="font-bold">Thủ kho</p>
-          <p className="italic mb-16">(Ký, họ tên)</p>
+          <p className="italic mb-20">(Ký, họ tên)</p>
+          <p className="font-bold text-white">.</p>
         </div>
         <div className="flex flex-col">
           <p className="font-bold">Kế toán trưởng</p>
-          <p className="italic mb-16">(Ký, họ tên)</p>
+          <p className="italic mb-20">(Ký, họ tên)</p>
+          <p className="font-bold text-white">.</p>
         </div>
         <div className="flex flex-col">
-          <p className="font-bold">Giám đốc</p>
-          <p className="italic mb-16">(Ký, họ tên, đóng dấu)</p>
+          <p className="font-bold uppercase">Giám đốc</p>
+          <p className="italic mb-20">(Ký, đóng dấu)</p>
+          <p className="font-bold text-white">.</p>
         </div>
       </div>
       
-      <div className="mt-8 text-right italic text-xs">
-        Ngày {currentDate.getDate()} tháng {currentDate.getMonth() + 1} năm {currentDate.getFullYear()}
+      <div className="mt-12 text-right italic text-[10px]">
+        Xuất ngày {currentDate.getDate()} tháng {currentDate.getMonth() + 1} năm {currentDate.getFullYear()}
       </div>
     </div>
   );

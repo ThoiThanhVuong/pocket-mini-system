@@ -5,8 +5,8 @@ import { Email } from '../../value-objects/email.value-object';
 export class Customer extends BaseEntity {
     private _name:string;
     private _phone:string;
-    private _email:Email;
-    private _address:string;
+    private _email:Email | null;
+    private _address:string | undefined;
     private _status:PartnerStatus;
     private _customerType: string;
     private _companyName: string | undefined;
@@ -18,18 +18,18 @@ export class Customer extends BaseEntity {
         id:string,
         name:string,
         phone:string,
-        email:string,
-        address:string,
-        status:PartnerStatus,
-        customerType: string,
-        companyName: string | undefined,
-        loyaltyTier: string,
+        email:string | null,
+        address?:string,
+        status:PartnerStatus = PartnerStatus.ACTIVE,
+        customerType: string = 'Individual',
+        companyName: string | undefined = undefined,
+        loyaltyTier: string = 'Bronze',
         createdAt:Date=new Date()
     ){
         super(id,createdAt);
         this._name=name;
         this._phone=phone;
-        this._email=new Email(email);
+        this._email=email ? new Email(email) : null;
         this._address=address;
         this._status=status;
         this._customerType = customerType;
@@ -38,8 +38,8 @@ export class Customer extends BaseEntity {
     }
     get name():string {return this._name;}
     get phone():string {return this._phone;}
-    get email():string {return this._email.getValue();}
-    get address():string {return this._address;}
+    get email():string {return this._email ? this._email.getValue() : '';}
+    get address():string {return this._address || '';}
     get status():PartnerStatus {return this._status;}
     get customerType(): string { return this._customerType; }
     get companyName(): string | undefined { return this._companyName; }
@@ -62,10 +62,10 @@ export class Customer extends BaseEntity {
         this._status = PartnerStatus.ACTIVE;
     }
 
-    public updateDetails(name?: string, phone?: string, email?: string, address?: string, customerType?: string, companyName?: string, loyaltyTier?: string): void {
+    public updateDetails(name?: string, phone?: string, email?: string | null, address?: string, customerType?: string, companyName?: string, loyaltyTier?: string): void {
         if (name) this._name = name;
         if (phone) this._phone = phone;
-        if (email) this._email = new Email(email);
+        if (email !== undefined) this._email = email ? new Email(email) : null;
         if (address) this._address = address;
         if (customerType) this._customerType = customerType;
         if (companyName !== undefined) this._companyName = companyName;

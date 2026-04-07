@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { X, AlertCircle } from 'lucide-react';
 import { Customer, PartnerStatus } from '@/types/partners/customer';
+import { toast } from 'sonner';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface CustomerModalState {
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_REGEX = /^(0[0-9]{9,10})$/;
+const PHONE_REGEX = /^0[0-9]{9}$/;
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? (
@@ -56,18 +57,27 @@ export class CustomerModal extends Component<CustomerModalProps, CustomerModalSt
 
   validate = (data: Record<string, string>) => {
     const errors: Record<string, string> = {};
+    const NAME_REGEX = /^[a-zA-ZÀ-ỹ\s]+$/u;
 
-    if (!data.name?.trim()) errors.name = 'Họ và tên không được để trống';
-    else if (data.name.trim().length < 2) errors.name = 'Họ và tên phải có ít nhất 2 ký tự';
+    if (!data.name?.trim()) {
+      errors.name = 'Họ và tên không được để trống';
+    } else if (!NAME_REGEX.test(data.name.trim())) {
+      errors.name = 'Họ và tên chỉ được chứa chữ cái và khoảng trắng';
+    } else if (data.name.trim().length < 2) {
+      errors.name = 'Họ và tên phải có ít nhất 2 ký tự';
+    }
 
-    if (!data.email?.trim()) errors.email = 'Email không được để trống';
-    else if (!EMAIL_REGEX.test(data.email.trim())) errors.email = 'Email không đúng định dạng';
+    if (!data.email?.trim()) {
+      errors.email = 'Email không được để trống';
+    } else if (!EMAIL_REGEX.test(data.email.trim())) {
+      errors.email = 'Email không đúng định dạng';
+    }
 
-    if (!data.phone?.trim()) errors.phone = 'Số điện thoại không được để trống';
-    else if (!PHONE_REGEX.test(data.phone.trim()))
+    if (!data.phone?.trim()) {
+      errors.phone = 'Số điện thoại không được để trống';
+    } else if (!PHONE_REGEX.test(data.phone.trim())) {
       errors.phone = 'Số điện thoại không hợp lệ (VD: 0901234567)';
-
-    if (!data.address?.trim()) errors.address = 'Địa chỉ không được để trống';
+    }
 
     if (!data.customerType) errors.customerType = 'Vui lòng chọn loại khách hàng';
 
@@ -94,6 +104,8 @@ export class CustomerModal extends Component<CustomerModalProps, CustomerModalSt
     const errors = this.validate(raw);
     if (Object.keys(errors).length > 0) {
       this.setState({ errors });
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError);
       return;
     }
 
@@ -227,7 +239,7 @@ export class CustomerModal extends Component<CustomerModalProps, CustomerModalSt
                     {/* Address */}
                     <div className="mb-4">
                       <label htmlFor="address" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Địa chỉ <span className="text-red-500">*</span>
+                        Địa chỉ
                       </label>
                       <textarea
                         name="address"

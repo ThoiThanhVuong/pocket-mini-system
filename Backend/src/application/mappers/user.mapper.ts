@@ -9,7 +9,7 @@ export class UserMapper {
         return new User(
             uuidv4(),
             new Email(dto.email),
-            dto.phoneNumber || '', 
+            dto.phoneNumber || null, 
             dto.fullName,
             passwordHash
         );

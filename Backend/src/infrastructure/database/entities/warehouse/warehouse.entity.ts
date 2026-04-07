@@ -1,9 +1,10 @@
 import { Stock } from "./stock.entity";
 import { BaseEntity } from "../base.entity";
-import { Column, Entity, OneToMany } from "typeorm";
+import { Column, Entity, OneToMany, ManyToMany } from "typeorm";
 import { StockIn } from "./stock-in.entity";
 import { StockOut } from "./stock-out.entity";
 import { StockTransfer } from "./stock-transfer.entity";
+import { User } from "../iam/user.entity";
 
 @Entity('warehouses')
 export class Warehouse extends BaseEntity{
@@ -45,4 +46,7 @@ export class Warehouse extends BaseEntity{
 
     @OneToMany(() => StockTransfer, (stockTransfer) => stockTransfer.toWarehouse)
     stockTransfersTo: StockTransfer[];
+
+    @ManyToMany(() => User, (user) => user.warehouses)
+    users: User[];
 }

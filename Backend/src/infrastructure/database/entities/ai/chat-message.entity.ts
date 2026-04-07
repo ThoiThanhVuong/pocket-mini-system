@@ -17,7 +17,7 @@ export class ChatMessageEntity extends BaseEntity {
     @Column()
     content: string;
 
-    @ManyToOne(() => ChatThreadEntity)
+    @ManyToOne(() => ChatThreadEntity, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'thread_id' })
     thread: ChatThreadEntity;
 
