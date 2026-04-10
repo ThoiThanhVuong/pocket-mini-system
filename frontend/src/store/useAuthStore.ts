@@ -51,7 +51,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     Cookies.remove('accessToken');
     Cookies.remove('user');
     set({ user: null, accessToken: null });
-    window.location.href = '/login';
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   },
 
   initialize: () => {

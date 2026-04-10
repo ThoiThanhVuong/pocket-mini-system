@@ -18,6 +18,12 @@ export class PayrollRepository implements IPayrollRepository {
         return entity ? this.toDomain(entity) : null;
     }
 
+    async findByUserAndYear(userId: string, year: number): Promise<PayrollDomain[]> {
+        const entities = await this.repo.find({ where: { userId, year } });
+        return entities.map(e => this.toDomain(e));
+    }
+
+
     async findByMonth(month: number, year: number): Promise<PayrollDomain[]> {
         const entities = await this.repo.find({ 
             where: { month, year },

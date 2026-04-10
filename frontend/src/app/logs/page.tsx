@@ -22,6 +22,9 @@ interface LogsState {
   isLoading: boolean;
   searchTerm: string;
   selectedLog: AuditLogItem | null;
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 
 export default class LogsPage extends Component<{}, LogsState> {
@@ -31,7 +34,10 @@ export default class LogsPage extends Component<{}, LogsState> {
       logs: [],
       isLoading: true,
       searchTerm: '',
-      selectedLog: null
+      selectedLog: null,
+      currentPage: 1,
+      pageSize: 12,
+      totalItems: 0
     };
   }
 
@@ -41,15 +47,27 @@ export default class LogsPage extends Component<{}, LogsState> {
 
   loadLogs = async () => {
     try {
+      const { currentPage, pageSize, searchTerm } = this.state;
       this.setState({ isLoading: true });
-      const data = await AuditService.getAllHistory();
-      this.setState({ logs: data || [] });
+      const response = await AuditService.getAllHistory(currentPage, pageSize, searchTerm);
+      this.setState({ 
+        logs: response.data || [],
+        totalItems: response.total || 0
+      });
     } catch (error) {
       console.error('Failed to load logs', error);
     } finally {
       this.setState({ isLoading: false });
     }
   };
+
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => {
+      this.loadLogs();
+    });
+  };
+
+  searchTimeout: NodeJS.Timeout | null = null;
 
   getActionBadgeClass = (action: string) => {
     switch (action) {
@@ -71,18 +89,18 @@ export default class LogsPage extends Component<{}, LogsState> {
   };
 
   handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ searchTerm: e.target.value });
+    const value = e.target.value;
+    this.setState({ searchTerm: value, currentPage: 1 }, () => {
+      if (this.searchTimeout) clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.loadLogs();
+      }, 500);
+    });
   };
 
   getFilteredLogs = () => {
-    const { logs, searchTerm } = this.state;
-    if (!searchTerm) return logs;
-    const lowerSearch = searchTerm.toLowerCase();
-    return logs.filter(log => 
-      log.action.toLowerCase().includes(lowerSearch) ||
-      log.entityType.toLowerCase().includes(lowerSearch) ||
-      (log.user?.fullName && log.user.fullName.toLowerCase().includes(lowerSearch))
-    );
+    // With server-side search, we just return all logs loaded for this page
+    return this.state.logs;
   };
 
   handleViewDetails = (log: AuditLogItem) => {
@@ -245,7 +263,10 @@ export default class LogsPage extends Component<{}, LogsState> {
 
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
             <Pagination 
-              totalItems={filteredLogs.length}
+              totalItems={this.state.totalItems}
+              currentPage={this.state.currentPage}
+              pageSize={this.state.pageSize}
+              onPageChange={this.handlePageChange}
               labelShowing="Showing"
               labelTo="to"
               labelOf="of"

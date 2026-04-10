@@ -27,11 +27,11 @@ export class AuditService implements IAuditService {
     }
 
     async getHistory(entityType: string, entityId: string): Promise<any[]> {
-        return this.auditRepo.findAll(entityType, entityId);
+        const result = await this.auditRepo.findAll({ entityType, entityId, limit: 1000 }); // History for specific entity usually doesn't need strict pagination or can have higher limit
+        return result.data;
     }
 
-    async getAllHistory(limit: number = 100): Promise<any[]> {
-        // We can extend repository to support limit if needed, but for now findAll is fine
-        return this.auditRepo.findAll();
+    async getAllHistory(options: { page?: number; limit?: number; search?: string }): Promise<{ data: any[]; total: number }> {
+        return this.auditRepo.findAll(options);
     }
 }

@@ -10,5 +10,5 @@ export interface IAuditService {
     ): Promise<void>;
     
     getHistory(entityType: string, entityId: string): Promise<any[]>;
-    getAllHistory(limit?: number): Promise<any[]>;
+    getAllHistory(options: { page?: number; limit?: number; search?: string }): Promise<{ data: any[]; total: number }>;
 }

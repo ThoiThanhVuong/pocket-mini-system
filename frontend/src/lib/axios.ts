@@ -44,7 +44,6 @@ api.interceptors.response.use(
       if (error.response.status === 401) {
         if (typeof window !== "undefined") {
           useAuthStore.getState().logout();
-          window.location.href = "/login";
         }
       }
 

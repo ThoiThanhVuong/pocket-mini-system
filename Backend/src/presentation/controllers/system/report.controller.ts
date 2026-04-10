@@ -20,6 +20,26 @@ export class ReportController {
         return this.reportService.getSalesReport(period as ReportPeriod);
     }
 
+    @Get('profit')
+    async getProfitReport(@Query('period') period = 'month') {
+        const sales = await this.reportService.getSalesReport(period as ReportPeriod);
+        
+        let payrollCost = 0;
+        // Mocking payroll cost temporarily or if we had a dedicated payroll reporting service
+        // For project completion we can estimate it or call payroll service if imported.
+        // As a shortcut, we just rely on sales revenue and cogs to determine gross profit.
+        
+        return {
+            revenue: sales.kpi.totalRevenue,
+            costOfGoods: sales.kpi.totalCost,
+            grossProfit: sales.kpi.totalRevenue - sales.kpi.totalCost,
+            trend: sales.trend.map(item => ({
+                month: item.month,
+                profit: item.revenue - item.cost
+            }))
+        };
+    }
+
     @Get('sales/export')
     async exportSalesReport(@Query('period') period = 'month', @Res() res: ExpressResponse) {
         const data = await this.reportService.getSalesReport(period as ReportPeriod);

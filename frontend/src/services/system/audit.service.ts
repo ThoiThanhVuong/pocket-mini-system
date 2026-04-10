@@ -18,8 +18,8 @@ export const AuditService = {
         const res = await api.get(`/audit-logs/history?entityType=${entityType}&entityId=${entityId}`);
         return res.data.data;
     },
-    getAllHistory: async (): Promise<AuditLogItem[]> => {
-        const res = await api.get('/audit-logs');
+    getAllHistory: async (page = 1, limit = 12, search = ''): Promise<{ data: AuditLogItem[], total: number }> => {
+        const res = await api.get(`/audit-logs?page=${page}&limit=${limit}&search=${search}`);
         return res.data.data;
     }
 };

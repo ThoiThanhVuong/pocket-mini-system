@@ -5,9 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { payrollService } from "@/services/hrm/payroll.service";
 import { UserService } from "@/services/iam/user.service";
 import { toast } from "sonner";
-import { Loader2, Calculator, Pencil, Calendar } from "lucide-react";
+import { Loader2, Calculator, Pencil, Calendar, Printer } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { PayrollEditModal } from "@/components/users/PayrollEditModal";
+import { SalarySlipModal } from "@/components/users/SalarySlipModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AttendanceStats from "@/components/attendance/AttendanceStats";
 
@@ -20,6 +21,7 @@ export default function SalaryTab() {
   
   // Modal states
   const [editingPayroll, setEditingPayroll] = useState<any>(null);
+  const [printingPayroll, setPrintingPayroll] = useState<any>(null);
   const [viewingUser, setViewingUser] = useState<string | null>(null);
 
   useEffect(() => {
@@ -169,6 +171,7 @@ export default function SalaryTab() {
                                         <Calculator className="w-4 h-4" />
                                     </Button>
                                     {payroll && (
+                                        <>
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -179,6 +182,16 @@ export default function SalaryTab() {
                                         >
                                             <Pencil className="w-4 h-4" />
                                         </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-gray-600"
+                                            title="Print Payroll"
+                                            onClick={() => setPrintingPayroll(payroll)}
+                                        >
+                                            <Printer className="w-4 h-4" />
+                                        </Button>
+                                        </>
                                     )}
                                 </div>
                             </TableCell>
@@ -210,6 +223,15 @@ export default function SalaryTab() {
             {viewingUser && <AttendanceStats userId={viewingUser} />}
         </DialogContent>
       </Dialog>
+
+      {/* Print Payroll Modal */}
+      {printingPayroll && (
+        <SalarySlipModal
+            isOpen={!!printingPayroll}
+            onClose={() => setPrintingPayroll(null)}
+            payroll={printingPayroll}
+        />
+      )}
     </div>
   );
 }

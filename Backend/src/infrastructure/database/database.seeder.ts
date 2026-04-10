@@ -144,6 +144,139 @@ FROM "users" u
 CROSS JOIN "roles" r
 WHERE u.email = 'admin@example.com' AND r.role_code = 'ADMIN'
 ON CONFLICT DO NOTHING;
+
+-- 5. Seed Test Data (Users, Suppliers, Customers, Warehouses, Categories, Products)
+
+-- 5.1 Insert Test Roles
+INSERT INTO "roles" ("role_code", "name", "description") VALUES
+('MANAGER', 'Manager', 'Quản lý Hệ Thống'),
+('STAFF', 'Staff', 'Nhân viên Bán Hàng/Kho'),
+('ACCOUNTANT', 'Accountant', 'Kế Toán Chuyên Trách')
+ON CONFLICT ("role_code") DO NOTHING;
+
+-- 5.2 Insert Test Users (Admin already exists, so 3 more = 4 total)
+INSERT INTO "users" ("email", "password_hash", "full_name", "status", "base_salary") VALUES
+(
+    'manager@example.com',
+    crypt('123456', gen_salt('bf'::text, 10)),
+    'Trần Quản Lý',
+    'active',
+    20000000
+),
+(
+    'staff@example.com',
+    crypt('123456', gen_salt('bf'::text, 10)),
+    'Lê Nhân Viên',
+    'active',
+    10000000
+),
+(
+    'accountant@example.com',
+    crypt('123456', gen_salt('bf'::text, 10)),
+    'Phạm Kế Toán',
+    'active',
+    15000000
+)
+ON CONFLICT ("email") DO NOTHING;
+
+-- 5.3 Assign Roles & Permissions
+-- Cấp quyền mẫu cho MANAGER (full quyền kho và sản phẩm)
+INSERT INTO "role_permissions" ("role_id", "permission_id")
+SELECT r.id, p.id FROM "roles" r CROSS JOIN "permissions" p WHERE r.role_code = 'MANAGER' AND (p.permission_code LIKE 'product.%' OR p.permission_code LIKE 'stock%') ON CONFLICT DO NOTHING;
+
+-- Cấp quyền mẫu cho ACCOUNTANT (quyền tài chính và báo cáo)
+INSERT INTO "role_permissions" ("role_id", "permission_id")
+SELECT r.id, p.id FROM "roles" r CROSS JOIN "permissions" p WHERE r.role_code = 'ACCOUNTANT' AND (p.permission_code LIKE 'payment.%' OR p.permission_code LIKE 'invoice.%' OR p.permission_code LIKE 'report.%') ON CONFLICT DO NOTHING;
+
+-- Gán Role cho Users
+INSERT INTO "user_roles" ("user_id", "role_id")
+SELECT u.id, r.id FROM "users" u CROSS JOIN "roles" r WHERE u.email = 'manager@example.com' AND r.role_code = 'MANAGER' ON CONFLICT DO NOTHING;
+
+INSERT INTO "user_roles" ("user_id", "role_id")
+SELECT u.id, r.id FROM "users" u CROSS JOIN "roles" r WHERE u.email = 'staff@example.com' AND r.role_code = 'STAFF' ON CONFLICT DO NOTHING;
+
+INSERT INTO "user_roles" ("user_id", "role_id")
+SELECT u.id, r.id FROM "users" u CROSS JOIN "roles" r WHERE u.email = 'accountant@example.com' AND r.role_code = 'ACCOUNTANT' ON CONFLICT DO NOTHING;
+
+-- 5.4 Seed Suppliers (3 Suppliers)
+INSERT INTO "suppliers" ("name", "contact_person", "phone", "email", "address", "status") VALUES
+('Công ty Cổ phần Alpha', 'Trần Anh', '0988123456', 'alpha@example.com', 'Hà Nội', 'active'),
+('Nhà PP Beta', 'Lê Bảo', '0912000111', 'beta@example.com', 'TP.HCM', 'active'),
+('Kho Tổng Linh Kiện Gamma', 'Phạm Cường', '0909112233', 'gamma@example.com', 'Đà Nẵng', 'active')
+ON CONFLICT DO NOTHING; -- Tránh lỗi nếu schema có ràng buộc
+
+-- 5.5 Seed Customers (3 Customers)
+INSERT INTO "customers" ("name", "phone", "email", "address", "status") VALUES
+('Cửa hàng Điện tử Vui', '0977888999', 'vui@example.com', 'Cần Thơ', 'active'),
+('Đại lý Tuấn Hưng', '0933444555', 'tuan@example.com', 'Hải Phòng', 'active'),
+('Chị Hoa (Khách sỉ)', '0944556677', 'hoa@example.com', 'Bình Dương', 'active')
+ON CONFLICT DO NOTHING;
+
+-- 5.6 Seed Warehouses (3 Warehouses)
+INSERT INTO "warehouses" ("name", "location", "status", "manager") VALUES
+('Kho Tổng Miền Bắc', 'Hà Nội', 'ACTIVE', 'Trần Quản Lý'),
+('Kho Trung Chuyển Miền Trung', 'Đà Nẵng', 'ACTIVE', 'Trần Quản Lý'),
+('Kho Trung Tâm Miền Nam', 'TP. HCM', 'ACTIVE', 'Trần Quản Lý');
+
+-- 5.7 Seed Categories
+INSERT INTO "categories" ("name", "description", "level") VALUES
+('Thiết Bị Lưu Trữ', 'Ổ cứng HDD, SSD, USB', 0),
+('Phụ Kiện Máy Tính', 'Bàn phím, Chuột, Tai nghe', 0),
+('Thiết Bị Mạng', 'Router, Switch, Cáp mạng', 0);
+
+-- 5.8 Seed Products (5 Products)
+INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
+SELECT 'PRD01', 'Ổ cứng SSD Samsung 1TB', 'SSD NVMe PCIe Gen 4', '', 'Cái', 2100000, true, 10, c.id
+FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1;
+
+INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
+SELECT 'PRD02', 'Ổ cứng HDD WD Blue 2TB', 'HDD Sata 3 7200rpm', '', 'Cái', 1350000, true, 15, c.id
+FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1;
+
+INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
+SELECT 'PRD03', 'Bàn phím cơ Logitech G Pro', 'Bàn phím Gaming switch Blue', '', 'Cái', 2450000, true, 5, c.id
+FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1;
+
+INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
+SELECT 'PRD04', 'Chuột Razer DeathAdder V2', 'Chuột Gaming có dây', '', 'Cái', 1100000, true, 8, c.id
+FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1;
+
+INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
+SELECT 'PRD05', 'Router Wifi 6 TP-Link AX50', 'Phát wifi 2 băng tần chuẩn AX3000', '', 'Cái', 1600000, true, 12, c.id
+FROM "categories" c WHERE c.name = 'Thiết Bị Mạng' LIMIT 1;
+
+-- 5.9 Seed Attendance
+INSERT INTO "attendance" ("user_id", "date", "check_in", "check_out", "working_hours", "overtime_hours", "status", "note")
+SELECT u.id, '2026-04-01', '2026-04-01 08:00:00', '2026-04-01 17:00:00', 8, 0, 'PRESENT', 'Chấm công mẫu'
+FROM "users" u WHERE u.email IN ('manager@example.com', 'staff@example.com', 'accountant@example.com') 
+ON CONFLICT DO NOTHING;
+
+INSERT INTO "attendance" ("user_id", "date", "check_in", "check_out", "working_hours", "overtime_hours", "status", "note")
+SELECT u.id, '2026-04-02', '2026-04-02 08:30:00', '2026-04-02 18:30:00', 8, 1, 'PRESENT', 'Có tăng ca'
+FROM "users" u WHERE u.email IN ('manager@example.com', 'staff@example.com', 'accountant@example.com') 
+ON CONFLICT DO NOTHING;
+
+INSERT INTO "attendance" ("user_id", "date", "check_in", "check_out", "working_hours", "overtime_hours", "status", "note")
+SELECT u.id, '2026-04-03', '2026-04-03 08:00:00', '2026-04-03 12:00:00', 4, 0, 'HALF_DAY', 'Sáng làm chiều nghỉ'
+FROM "users" u WHERE u.email IN ('manager@example.com', 'staff@example.com', 'accountant@example.com') 
+ON CONFLICT DO NOTHING;
+
+-- 5.10 Seed Payroll (Month 4, 2026)
+INSERT INTO "payroll" ("user_id", "month", "year", "total_working_days", "base_salary", "total_salary", "total_normal_hours", "total_ot_hours", "hourly_rate", "status")
+SELECT 
+    u.id, 
+    4, 
+    2026, 
+    2.5, 
+    COALESCE(u.base_salary, 10000000), 
+    (COALESCE(u.base_salary, 10000000) / 22) * 2.5, 
+    20, 
+    1, 
+    COALESCE(u.base_salary, 10000000) / (22 * 8), 
+    'DRAFT' 
+FROM "users" u 
+WHERE u.email IN ('manager@example.com', 'staff@example.com', 'accountant@example.com') 
+ON CONFLICT DO NOTHING;
     `;
     await this.dataSource.query(sql);
   }

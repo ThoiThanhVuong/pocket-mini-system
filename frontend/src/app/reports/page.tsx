@@ -10,7 +10,7 @@ import {
 import { PageHeader } from '@/components/common/PageHeader';
 import {
   ReportService, ReportPeriod,
-  SalesReport, InventoryReport, CustomersReport
+  SalesReport, InventoryReport, CustomersReport, ProfitReport
 } from '@/services/system/report.service';
 import { toast } from 'sonner';
 
@@ -30,6 +30,7 @@ const tooltipStyle = {
 };
 
 const TABS = [
+  { id: 'profit',    label: 'Báo cáo Lợi Nhuận' },
   { id: 'sales',     label: 'Báo cáo Xuất kho' },
   { id: 'inventory', label: 'Báo cáo Tồn kho' },
   { id: 'customers', label: 'Báo cáo Khách hàng' },
@@ -125,6 +126,47 @@ function SalesReportView({ data }: { data: SalesReport }) {
   );
 }
 
+// ─── Profit Report ─────────────────────────────────────────────────────────
+function ProfitReportView({ data }: { data: ProfitReport }) {
+  const { revenue, costOfGoods, grossProfit, trend } = data;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <KpiCard title="Lợi Nhuận Gộp" value={fmtCurrency(grossProfit)}
+          subtext="Doanh thu - Giá vốn" color="emerald" icon={<TrendingUp className="text-emerald-600" size={22} />} />
+        <KpiCard title="Doanh Thu Xuất Kho" value={fmtCurrency(revenue)}
+          subtext="Tổng doanh thu" color="blue" icon={<ShoppingCart className="text-blue-600" size={22} />} />
+        <KpiCard title="Giá Vốn (Cost of Goods)" value={fmtCurrency(costOfGoods)}
+          subtext="Tổng giá vốn nhập kho" color="red" icon={<TrendingDown className="text-red-600" size={22} />} />
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Xu hướng Lợi Nhuận Gộp</h3>
+        {trend.length === 0 ? (
+          <div className="flex items-center justify-center h-72 text-gray-400 text-sm">Chưa có dữ liệu</div>
+        ) : (
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trend} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="month" stroke="#9ca3af" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} tickFormatter={fmtNum} />
+                <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => fmtCurrency(v ?? 0)} />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="profit" name="Lợi nhuận" fill="#10b981" radius={[4, 4, 0, 0]}>
+                  {trend.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.profit >= 0 ? '#10b981' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Inventory Report ─────────────────────────────────────────────────────────
 function InventoryReportView({ data }: { data: InventoryReport }) {
   const { kpi, byCategory } = data;
@@ -199,10 +241,11 @@ function CustomersReportView({ data }: { data: CustomersReport }) {
 
 // â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<string>('sales');
+  const [activeTab, setActiveTab] = useState<string>('profit');
   const [period, setPeriod] = useState<ReportPeriod>('month');
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [profitData, setProfitData] = useState<ProfitReport | null>(null);
   const [salesData, setSalesData] = useState<SalesReport | null>(null);
   const [inventoryData, setInventoryData] = useState<InventoryReport | null>(null);
   const [customersData, setCustomersData] = useState<CustomersReport | null>(null);
@@ -210,7 +253,9 @@ export default function ReportsPage() {
   const fetchData = useCallback(async (tab: string, p: ReportPeriod) => {
     setIsLoading(true);
     try {
-      if (tab === 'sales') {
+      if (tab === 'profit') {
+        setProfitData(await ReportService.getProfitReport(p));
+      } else if (tab === 'sales') {
         setSalesData(await ReportService.getSalesReport(p));
       } else if (tab === 'inventory') {
         setInventoryData(await ReportService.getInventoryReport());
@@ -261,6 +306,7 @@ export default function ReportsPage() {
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton />;
+    if (activeTab === 'profit' && profitData) return <ProfitReportView data={profitData} />;
     if (activeTab === 'sales' && salesData) return <SalesReportView data={salesData} />;
     if (activeTab === 'inventory' && inventoryData) return <InventoryReportView data={inventoryData} />;
     if (activeTab === 'customers' && customersData) return <CustomersReportView data={customersData} />;

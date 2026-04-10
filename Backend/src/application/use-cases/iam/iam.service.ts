@@ -1,4 +1,6 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { IIamService } from '../../../core/interfaces/services/iam/iam.service.interface';
 import type { IRoleRepository } from '../../../core/interfaces/repositories/iam/role.repository.interface';
 import type { IUserRepository } from '../../../core/interfaces/repositories/iam/user.repository.interface';
@@ -13,6 +15,7 @@ import { User } from '../../../core/domain/entities/iam/user.entity';
 import { UserStatus } from '../../../core/domain/enums/user-status.enum';
 import { Email } from 'src/core/domain/value-objects/email.value-object';
 import { UserMapper } from '../../mappers/user.mapper';
+import { UserSalaryHistory } from '../../../infrastructure/database/entities/iam/user-salary-history.entity';
 
 @Injectable()
 export class IamService implements IIamService{
@@ -27,6 +30,9 @@ export class IamService implements IIamService{
 
     @Inject(HashingServiceKey)
     private readonly hashingService: IHashingService,
+
+    @InjectRepository(UserSalaryHistory)
+    private readonly historyRepo: Repository<UserSalaryHistory>,
   ) {}
 
     async createRole(name:string, description?:string, baseSalary?: number, salaryType?: string): Promise<Role> {
@@ -231,15 +237,25 @@ export class IamService implements IIamService{
             else if (status === UserStatus.BANNED) user.ban();
         }
 
+        const oldRole = user.roles && user.roles.length > 0 ? user.roles[0].name : null;
+        const oldSalary = user.baseSalary || 0;
+
+        let roleChanged = false;
+        let salaryChanged = false;
+        let newRoleObj: any = null;
+
         if (roleCode) {
             const role = await this.roleRepo.findByCode(roleCode as UserRole);
             if (role) {
                 user.setRoles([role]);
+                newRoleObj = role;
+                if (oldRole !== role.name) roleChanged = true;
             }
         }
 
-        if (baseSalary !== undefined) {
+        if (baseSalary !== undefined && baseSalary !== oldSalary) {
              user.baseSalary = baseSalary;
+             salaryChanged = true;
         }
 
         if (salaryType) {
@@ -251,7 +267,21 @@ export class IamService implements IIamService{
              user.setWarehouses(warehouseIds);
         }
 
-        return await this.userRepo.save(user);
+        const updatedUser = await this.userRepo.save(user);
+
+        if (roleChanged || salaryChanged) {
+            const history = new UserSalaryHistory();
+            history.userId = user.id;
+            history.oldRoleName = oldRole || '';
+            history.newRoleName = newRoleObj ? newRoleObj.name : (oldRole || '');
+            history.oldBaseSalary = oldSalary;
+            history.newBaseSalary = user.baseSalary;
+            history.effectiveDate = new Date().toISOString().split('T')[0]; // Default effective date is today
+            history.reason = 'Thay đổi chức vụ / mức lương';
+            await this.historyRepo.save(history);
+        }
+
+        return updatedUser;
     }
 
     async deleteUser(userId: string): Promise<void> {

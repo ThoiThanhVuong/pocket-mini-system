@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../../infrastructure/database/entities/iam/user.entity';
+import { UserSalaryHistory } from '../../infrastructure/database/entities/iam/user-salary-history.entity';
 
 // Auth Infra
 import { AuthModule } from '../../infrastructure/auth/auth.module';
@@ -28,7 +29,7 @@ import { IamServiceKey } from '../../core/interfaces/services/iam/iam.service.in
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Role, Permission]),
+    TypeOrmModule.forFeature([User, Role, Permission, UserSalaryHistory]),
     AuthModule, // Provides JwtModule, PassportModule
   ],
   controllers: [AuthenticationController,IamController],

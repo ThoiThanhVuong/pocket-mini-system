@@ -24,6 +24,18 @@ export interface SalesReport {
     topProducts: TopProductItem[];
 }
 
+// ─── Profit ────────────────────────────────────────────────
+export interface ProfitTrendItem {
+    month: string;
+    profit: number;
+}
+export interface ProfitReport {
+    revenue: number;
+    costOfGoods: number;
+    grossProfit: number;
+    trend: ProfitTrendItem[];
+}
+
 // ─── Inventory ────────────────────────────────────────────
 export interface InventoryKpi {
     totalProducts: number;
@@ -59,6 +71,10 @@ export interface CustomersReport {
 export const ReportService = {
     async getSalesReport(period: ReportPeriod = 'month'): Promise<SalesReport> {
         const res = await api.get('/reports/sales', { params: { period } });
+        return res.data.data;
+    },
+    async getProfitReport(period: ReportPeriod = 'month'): Promise<ProfitReport> {
+        const res = await api.get('/reports/profit', { params: { period } });
         return res.data.data;
     },
     async getInventoryReport(): Promise<InventoryReport> {

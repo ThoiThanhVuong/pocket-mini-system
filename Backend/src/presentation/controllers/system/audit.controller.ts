@@ -20,7 +20,15 @@ export class AuditLogController {
     }
 
     @Get()
-    async getAll() {
-        return this.auditService.getAllHistory();
+    async getAll(
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '12',
+        @Query('search') search?: string,
+    ) {
+        return this.auditService.getAllHistory({
+            page: parseInt(page),
+            limit: parseInt(limit),
+            search,
+        });
     }
 }
