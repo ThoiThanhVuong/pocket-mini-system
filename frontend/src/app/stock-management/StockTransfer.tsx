@@ -31,7 +31,13 @@ export class StockTransfer extends Component<{}, StockTransferState> {
       availableStock: null,
       warehouseStock: [],
       isSubmitting: false,
-      error: null
+      error: null,
+      totalItems: 0,
+      currentPage: 1,
+      search: '',
+      filterFromWarehouseId: '',
+      filterToWarehouseId: '',
+      printingId: null
     };
   }
 
@@ -41,7 +47,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
 
   loadTransfers = async () => {
     try {
-      const { search, filterFromWarehouseId, filterToWarehouseId, currentPage } = this.state as any;
+      const { search, filterFromWarehouseId, filterToWarehouseId, currentPage } = this.state;
       const response = await StockTransferService.getAllStockTransfers({
         search,
         warehouseId: filterFromWarehouseId || filterToWarehouseId, // The API handles either one if provided as warehouseId, or we can update API to handle specific from/to
@@ -201,10 +207,10 @@ export class StockTransfer extends Component<{}, StockTransferState> {
   };
 
   handlePrint = (id: string) => {
-    this.setState({ printingId: id } as any, () => {
+    this.setState({ printingId: id }, () => {
         setTimeout(() => {
             window.print();
-            this.setState({ printingId: null } as any);
+            this.setState({ printingId: null });
         }, 500);
     });
   };
@@ -503,11 +509,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
     }
   };
   renderTransferHistory = () => {
-    const { transfers, warehouses, products, totalItems } = this.state;
-    const search: string = (this.state as any).search || '';
-    const filterFromWarehouseId: string = (this.state as any).filterFromWarehouseId || '';
-    const filterToWarehouseId: string = (this.state as any).filterToWarehouseId || '';
-    const currentPage: number = (this.state as any).currentPage || 1;
+    const { transfers, warehouses, products, totalItems, search, filterFromWarehouseId, filterToWarehouseId, currentPage } = this.state;
     const PAGE_SIZE = 12;
 
     const statusColor: Record<string, string> = {
@@ -532,12 +534,12 @@ export class StockTransfer extends Component<{}, StockTransferState> {
             type="text"
             placeholder="Tìm mã phiếu..."
             value={search}
-            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
+            onChange={e => this.setState({ search: e.target.value, currentPage: 1 }, () => this.loadTransfers())}
             className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <select
             value={filterFromWarehouseId}
-            onChange={e => this.setState({ filterFromWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
+            onChange={e => this.setState({ filterFromWarehouseId: e.target.value, currentPage: 1 }, () => this.loadTransfers())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho xuất</option>
@@ -545,7 +547,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
           </select>
           <select
             value={filterToWarehouseId}
-            onChange={e => this.setState({ filterToWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
+            onChange={e => this.setState({ filterToWarehouseId: e.target.value, currentPage: 1 }, () => this.loadTransfers())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho nhập</option>
@@ -599,7 +601,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
                       </span>
                     </td>
                     <td className="px-4 py-3 flex gap-2">
-                      <button onClick={() => this.setState({ selectedViewId: transfer.id } as any)} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1">
+                      <button onClick={() => this.setState({ selectedViewId: transfer.id })} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded flex items-center gap-1">
                         <Eye size={14} /> Xem
                       </button>
                       <button onClick={() => this.handlePrint(transfer.id)}
@@ -637,17 +639,17 @@ export class StockTransfer extends Component<{}, StockTransferState> {
           <div className="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
             <span>Hiển thị {Math.min((currentPage - 1) * 12 + 1, totalItems)}–{Math.min(currentPage * 12, totalItems)} / {totalItems} phiếu</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any, () => this.loadTransfers())}
+              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 }, () => this.loadTransfers())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ‹
               </button>
               {Array.from({ length: Math.ceil(totalItems / 12) }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => this.setState({ currentPage: p } as any, () => this.loadTransfers())}
+                <button key={p} onClick={() => this.setState({ currentPage: p }, () => this.loadTransfers())}
                   className={`px-3 py-1 rounded border ${p === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   {p}
                 </button>
               ))}
-              <button disabled={currentPage === Math.ceil(totalItems / 12)} onClick={() => this.setState({ currentPage: currentPage + 1 } as any, () => this.loadTransfers())}
+              <button disabled={currentPage === Math.ceil(totalItems / 12)} onClick={() => this.setState({ currentPage: currentPage + 1 }, () => this.loadTransfers())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ›
               </button>
@@ -657,26 +659,26 @@ export class StockTransfer extends Component<{}, StockTransferState> {
 
 
         {/* Detail Modal */}
-        {(this.state as any).selectedViewId && (
+        {this.state.selectedViewId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl max-w-5xl w-full mx-4 my-8 relative z-50 shadow-2xl flex flex-col max-h-[90vh]">
               <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 rounded-t-xl">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Chi tiết phiếu điều chuyển</h3>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => this.handlePrint((this.state as any).selectedViewId)}
+                    onClick={() => this.handlePrint(this.state.selectedViewId!)}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
                   >
                     <Printer size={18} /> In phiếu
                   </button>
-                  <button onClick={() => this.setState({ selectedViewId: null } as any)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <button onClick={() => this.setState({ selectedViewId: null })} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <X size={24} />
                   </button>
                 </div>
               </div>
               <div className="p-6 overflow-y-auto">
                 {(() => {
-                  const tr = transfers.find((t: any) => t.id === (this.state as any).selectedViewId);
+                  const tr = transfers.find((t: any) => t.id === this.state.selectedViewId);
                   if (!tr) return null;
                   
                   return (
@@ -728,7 +730,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
               </div>
             </div>
             {/* Backdrop explicit click */}
-            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null } as any)}></div>
+            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null })}></div>
           </div>
         )}
       </div>

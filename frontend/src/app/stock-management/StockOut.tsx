@@ -81,7 +81,7 @@ export class StockOut extends Component<{}, StockOutState> {
 
   loadStockOuts = async () => {
     try {
-      const { search, filterWarehouseId, currentPage, pageSize } = this.state as any;
+      const { search, filterWarehouseId, currentPage, pageSize } = this.state;
       const [response, paymentsData] = await Promise.all([
         StockOutService.getAllStockOuts({
           search,
@@ -99,7 +99,7 @@ export class StockOut extends Component<{}, StockOutState> {
 
       this.setState({ 
         stockOuts: mappedData,
-        totalItems: response.meta.totalItems
+        totalItems: response.meta?.totalItems || 0
       });
     } catch (error) {
       console.error('Failed to load stock-outs:', error);
@@ -661,11 +661,7 @@ export class StockOut extends Component<{}, StockOutState> {
   };
 
   renderHistory = () => {
-    const { stockOuts, warehouses, customers } = this.state;
-    const search: string = (this.state as any).search || '';
-    const filterWarehouseId: string = (this.state as any).filterWarehouseId || '';
-    const filterCustomerId: string = (this.state as any).filterCustomerId || '';
-    const currentPage: number = (this.state as any).currentPage || 1;
+    const { stockOuts, warehouses, customers, search, filterWarehouseId, filterCustomerId, currentPage, totalItems } = this.state;
     const PAGE_SIZE = 12;
 
     const statusColor: Record<string, string> = {
@@ -677,8 +673,7 @@ export class StockOut extends Component<{}, StockOutState> {
 
     // Server-side filtered already, but we keep the mapping for UI display
     const paged = stockOuts;
-    const totalItems = (this.state as any).totalItems || 0;
-    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    const totalPages = Math.ceil((totalItems || 0) / PAGE_SIZE);
 
     return (
       <div className="mt-8">
@@ -699,12 +694,12 @@ export class StockOut extends Component<{}, StockOutState> {
             type="text"
             placeholder="Tìm mã phiếu / khách hàng..."
             value={search}
-            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any, () => this.loadStockOuts())}
+            onChange={e => this.setState({ search: e.target.value, currentPage: 1 }, () => this.loadStockOuts())}
             className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <select
             value={filterWarehouseId}
-            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadStockOuts())}
+            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 }, () => this.loadStockOuts())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho</option>
@@ -712,7 +707,7 @@ export class StockOut extends Component<{}, StockOutState> {
           </select>
           <select
             value={filterCustomerId}
-            onChange={e => this.setState({ filterCustomerId: e.target.value, currentPage: 1 } as any, () => this.loadStockOuts())}
+            onChange={e => this.setState({ filterCustomerId: e.target.value, currentPage: 1 }, () => this.loadStockOuts())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả khách hàng</option>
@@ -804,17 +799,17 @@ export class StockOut extends Component<{}, StockOutState> {
           <div className="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
             <span>Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems)}–{Math.min(currentPage * PAGE_SIZE, totalItems)} / {totalItems} phiếu</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any, () => this.loadStockOuts())}
+              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 }, () => this.loadStockOuts())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ‹
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => this.setState({ currentPage: p } as any, () => this.loadStockOuts())}
+                <button key={p} onClick={() => this.setState({ currentPage: p }, () => this.loadStockOuts())}
                   className={`px-3 py-1 rounded border ${p === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   {p}
                 </button>
               ))}
-              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 } as any, () => this.loadStockOuts())}
+              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 }, () => this.loadStockOuts())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ›
               </button>
@@ -823,26 +818,26 @@ export class StockOut extends Component<{}, StockOutState> {
         )}
 
         {/* Detail Modal */}
-        {(this.state as any).selectedViewId && (
+        {this.state.selectedViewId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl max-w-5xl w-full mx-4 my-8 relative z-50 shadow-2xl flex flex-col max-h-[90vh]">
               <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 rounded-t-xl">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Chi tiết phiếu xuất</h3>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => this.handlePrint((this.state as any).selectedViewId)}
+                    onClick={() => this.handlePrint(this.state.selectedViewId!)}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
                   >
                     <Printer size={18} /> In phiếu
                   </button>
-                  <button onClick={() => this.setState({ selectedViewId: null } as any)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <button onClick={() => this.setState({ selectedViewId: null })} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <X size={24} />
                   </button>
                 </div>
               </div>
               <div className="p-6 overflow-y-auto">
                 {(() => {
-                  const so = stockOuts.find((s: any) => s.id === (this.state as any).selectedViewId);
+                  const so = stockOuts.find((s: any) => s.id === this.state.selectedViewId);
                   if (!so) return null;
                   
                   return (
@@ -899,7 +894,7 @@ export class StockOut extends Component<{}, StockOutState> {
               </div>
             </div>
             {/* Backdrop explicit click */}
-            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null } as any)}></div>
+            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null })}></div>
           </div>
         )}
 

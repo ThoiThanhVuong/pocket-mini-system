@@ -46,4 +46,12 @@ export interface StockTransferState {
   error: string | null;
   selectedViewId?: string | null;
   isFormExpanded?: boolean;
+  
+  // Pagination and Filters
+  totalItems: number;
+  currentPage: number;
+  search: string;
+  filterFromWarehouseId: string;
+  filterToWarehouseId: string;
+  printingId?: string | null;
 }

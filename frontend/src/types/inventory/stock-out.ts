@@ -54,7 +54,7 @@ export interface StockOutState {
   error: string | null;
   selectedViewId?: string | null;
   isFormExpanded?: boolean;
-  totalItems?: number;
+  totalItems: number;
   currentPage: number;
   pageSize: number;
   search: string;

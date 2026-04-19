@@ -77,7 +77,7 @@ export class StockIn extends Component<{}, StockInState> {
 
   loadStockIns = async () => {
     try {
-      const { search, filterWarehouseId, filterSupplierId, currentPage, pageSize } = this.state as any;
+      const { search, filterWarehouseId, filterSupplierId, currentPage, pageSize } = this.state;
       const [response, paymentsData] = await Promise.all([
         StockInService.getAllStockIns({
           search,
@@ -95,7 +95,7 @@ export class StockIn extends Component<{}, StockInState> {
 
       this.setState({ 
         stockIns: mappedData,
-        totalItems: response.meta.totalItems 
+        totalItems: response.meta?.totalItems || 0 
       });
     } catch (error) {
       console.error('Failed to load stock-ins:', error);
@@ -797,12 +797,9 @@ export class StockIn extends Component<{}, StockInState> {
   }
 
   renderHistory = () => {
-    const { stockIns, warehouses, suppliers } = this.state;
-    const search: string = (this.state as any).search || '';
-    const filterWarehouseId: string = (this.state as any).filterWarehouseId || '';
-    const filterSupplierId: string = (this.state as any).filterSupplierId || '';
-    const currentPage: number = (this.state as any).currentPage || 1;
+    const { stockIns, warehouses, suppliers, search, filterWarehouseId, filterSupplierId, currentPage, totalItems } = this.state;
     const PAGE_SIZE = 12;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
 
     const statusColor: Record<string, string> = {
       PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -811,10 +808,7 @@ export class StockIn extends Component<{}, StockInState> {
       CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     };
 
-    // Server-side filtered already, but we keep the mapping for UI display
     const paged = stockIns;
-    const totalItems = (this.state as any).totalItems || 0;
-    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
 
     return (
       <div className="mt-8">
@@ -835,12 +829,12 @@ export class StockIn extends Component<{}, StockInState> {
             type="text"
             placeholder="Tìm mã phiếu / nhà cung cấp..."
             value={search}
-            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
+            onChange={e => this.setState({ search: e.target.value, currentPage: 1 }, () => this.loadStockIns())}
             className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <select
             value={filterWarehouseId}
-            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
+            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 }, () => this.loadStockIns())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho</option>
@@ -848,7 +842,7 @@ export class StockIn extends Component<{}, StockInState> {
           </select>
           <select
             value={filterSupplierId}
-            onChange={e => this.setState({ filterSupplierId: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
+            onChange={e => this.setState({ filterSupplierId: e.target.value, currentPage: 1 }, () => this.loadStockIns())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả nhà cung cấp</option>
@@ -895,7 +889,7 @@ export class StockIn extends Component<{}, StockInState> {
                       </span>
                     </td>
                     <td className="px-4 py-3 flex gap-2 flex-wrap">
-                      <button onClick={() => this.setState({ selectedViewId: so.id } as any)}
+                      <button onClick={() => this.setState({ selectedViewId: so.id })}
                         className="px-2 py-1 text-xs bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 flex items-center gap-1">
                         <Eye size={14} /> Xem
                       </button>
@@ -936,17 +930,17 @@ export class StockIn extends Component<{}, StockInState> {
           <div className="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
             <span>Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems)}–{Math.min(currentPage * PAGE_SIZE, totalItems)} / {totalItems} phiếu</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any, () => this.loadStockIns())}
+              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 }, () => this.loadStockIns())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ‹
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => this.setState({ currentPage: p } as any, () => this.loadStockIns())}
+                <button key={p} onClick={() => this.setState({ currentPage: p }, () => this.loadStockIns())}
                   className={`px-3 py-1 rounded border ${p === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   {p}
                 </button>
               ))}
-              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 } as any, () => this.loadStockIns())}
+              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 }, () => this.loadStockIns())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ›
               </button>
@@ -955,26 +949,26 @@ export class StockIn extends Component<{}, StockInState> {
         )}
 
         {/* Detail Modal */}
-        {(this.state as any).selectedViewId && (
+        {this.state.selectedViewId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl max-w-5xl w-full mx-4 my-8 relative z-50 shadow-2xl flex flex-col max-h-[90vh]">
               <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 rounded-t-xl">
                 <h3 className="text-xl font-semibold text-gray-800 dark:text-white">Chi tiết phiếu nhập</h3>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => this.handlePrint((this.state as any).selectedViewId)}
+                    onClick={() => this.handlePrint(this.state.selectedViewId!)}
                     className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
                   >
                     <Printer size={18} /> In phiếu
                   </button>
-                  <button onClick={() => this.setState({ selectedViewId: null } as any)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                  <button onClick={() => this.setState({ selectedViewId: null })} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <X size={24} />
                   </button>
                 </div>
               </div>
               <div className="p-6 overflow-y-auto">
                 {(() => {
-                  const so = stockIns.find((s: any) => s.id === (this.state as any).selectedViewId);
+                  const so = stockIns.find((s: any) => s.id === this.state.selectedViewId);
                   if (!so) return null;
                   
                   return (
@@ -1030,7 +1024,7 @@ export class StockIn extends Component<{}, StockInState> {
               </div>
             </div>
             {/* Backdrop explicit click */}
-            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null } as any)}></div>
+            <div className="absolute inset-0 -z-10" onClick={() => this.setState({ selectedViewId: null })}></div>
           </div>
         )}
 
