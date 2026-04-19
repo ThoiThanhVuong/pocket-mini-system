@@ -1,10 +1,16 @@
 import api from '@/lib/axios';
 import { StockTransfer, CreateStockTransferDto } from '@/types/inventory/stock-transfer';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const StockTransferService = {
-  async getAllStockTransfers(params?: { warehouseId?: string; status?: string }): Promise<StockTransfer[]> {
-    const response = await api.get<ApiResponse<StockTransfer[]>>('/stock-transfer', { params });
+  async getAllStockTransfers(params?: { 
+    warehouseId?: string; 
+    status?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<PaginatedResult<StockTransfer>> {
+    const response = await api.get<ApiResponse<PaginatedResult<StockTransfer>>>('/stock-transfer', { params });
     return response.data.data;
   },
 

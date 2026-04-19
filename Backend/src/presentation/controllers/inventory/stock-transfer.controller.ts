@@ -87,7 +87,14 @@ export class StockTransferController {
 
     @Get()
     @RequirePermissions(PermissionCode.STOCK_TRANSFER_VIEW)
-    async findAll(@Req() req: any, @Query('warehouseId') warehouseId?: string, @Query('status') status?: string) {
+    async findAll(
+        @Req() req: any, 
+        @Query('warehouseId') warehouseId?: string, 
+        @Query('status') status?: string,
+        @Query('search') search?: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
         const userRoles = (req.user.roles || []).map((r: any) => (r.roleCode as string)?.toLowerCase());
         const isSystemAdmin = userRoles.includes('admin') || userRoles.includes('system_admin');
         const userWarehouseIds = req.user.warehouseIds || [];
@@ -99,7 +106,7 @@ export class StockTransferController {
                 } else if (userWarehouseIds.length > 1) {
                     throw new ForbiddenException('Vui lòng chọn kho cụ thể để xem danh sách');
                 } else {
-                    return [];
+                    return { items: [], meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit || 12, totalPages: 0, currentPage: page || 1 } };
                 }
             } else {
                 if (!userWarehouseIds.includes(warehouseId)) {
@@ -108,24 +115,31 @@ export class StockTransferController {
             }
         }
 
-        const list = await this.transferService.getAll(warehouseId, status);
-        return list.map(t => ({
-            id: t.id,
-            fromWarehouseId: t.fromWarehouseId,
-            fromWarehouseName: (t as any).fromWarehouseName || '',
-            toWarehouseId: t.toWarehouseId,
-            toWarehouseName: (t as any).toWarehouseName || '',
-            referenceCode: t.referenceCode,
-            status: t.status,
-            itemCount: t.items.length,
-            createdAt: t.createdAt,
-            items: t.items.map(i => ({
-                id: i.id,
-                productId: i.productId,
-                productName: (i as any).productName || '',
-                quantity: i.quantity,
+        const result = await this.transferService.getAll(
+            { fromWarehouseId: warehouseId, toWarehouseId: warehouseId, status, search },
+            { page: page ? Number(page) : 1, limit: limit ? Number(limit) : 12 }
+        );
+
+        return {
+            items: result.items.map(t => ({
+                id: t.id,
+                fromWarehouseId: t.fromWarehouseId,
+                fromWarehouseName: (t as any).fromWarehouseName || '',
+                toWarehouseId: t.toWarehouseId,
+                toWarehouseName: (t as any).toWarehouseName || '',
+                referenceCode: t.referenceCode,
+                status: t.status,
+                itemCount: t.items.length,
+                createdAt: t.createdAt,
+                items: t.items.map(i => ({
+                    id: i.id,
+                    productId: i.productId,
+                    productName: (i as any).productName || '',
+                    quantity: i.quantity,
+                })),
             })),
-        }));
+            meta: result.meta
+        };
     }
 
     @Get(':id')

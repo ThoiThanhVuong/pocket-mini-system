@@ -65,6 +65,7 @@ export default class ProductsPage extends Component<{}, ProductsPageState> {
           {activeTab === 'products' && (
             <ExcelImportButton 
               endpoint="/products/import" 
+              templateEndpoint="/products/import-template"
               onSuccess={() => window.location.reload()}
               permission="product.create"
             />

@@ -59,9 +59,20 @@ export class SupplierController {
 
     @Get()
     @RequirePermissions(PermissionCode.SUPPLIER_VIEW)
-    async findAll(@Query('search') search?: string, @Query('status') status?: string) {
-        const suppliers = await this.supplierService.getAllSuppliers(search, status);
-        return suppliers.map(s => SupplierMapper.toResponse(s));
+    async findAll(
+        @Query('search') search?: string, 
+        @Query('status') status?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
+    ) {
+        const paginatedSuppliers = await this.supplierService.getAllSuppliers(search, status, {
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        return {
+            items: paginatedSuppliers.items.map(s => SupplierMapper.toResponse(s)),
+            meta: paginatedSuppliers.meta
+        };
     }
 
     @Get(':id')

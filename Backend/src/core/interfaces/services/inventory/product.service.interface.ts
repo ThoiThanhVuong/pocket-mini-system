@@ -1,4 +1,5 @@
 import { Product } from "../../../domain/entities/warehouse/product.entity";
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 
 export interface IProductService {
     createProduct(name:string,sku:string,price:number,description:string,image:string,categoryId:string,unit:string,minStock:number):Promise<Product>;
@@ -7,7 +8,7 @@ export interface IProductService {
     updateStock(id:string,newStock:number):Promise<Product>;
     deleteProduct(id:string):Promise<void>;
     getProductById(id:string):Promise<Product|null>;
-    getAllProducts(search?:string,isActive?:boolean,categoryId?:string):Promise<Product[]>;
+    getAllProducts(search?:string,isActive?:boolean,categoryId?:string, options?: IPaginationOptions):Promise<IPaginatedResult<Product>>;
     countProducts(search?:string,isActive?:boolean,categoryId?:string):Promise<number>;
 }
 export const IProductServiceKey = 'IProductService';

@@ -19,6 +19,9 @@ interface CategoriesTabState {
   isModalOpen: boolean;
   selectedCategory: Category | null;
   searchQuery: string;
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 
 interface CategoriesTabProps {
@@ -32,14 +35,22 @@ export class CategoriesTab extends Component<CategoriesTabProps, CategoriesTabSt
       categories: [],
       isModalOpen: false,
       selectedCategory: null,
-      searchQuery: ''
+      searchQuery: '',
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
     };
   }
 
   loadCategories = async () => {
     try {
-      const data = await CategoryService.getAllCategories();
-      this.setState({ categories: data });
+      const { searchQuery, currentPage, pageSize } = this.state;
+      const data = await CategoryService.getAllCategories({
+        search: searchQuery,
+        page: currentPage,
+        limit: pageSize
+      });
+      this.setState({ categories: data.items, totalItems: data.meta.totalItems });
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }
@@ -81,11 +92,10 @@ export class CategoriesTab extends Component<CategoriesTabProps, CategoriesTabSt
   getFilteredCategories = () => {
     const { categories, searchQuery } = this.state;
     if (searchQuery) {
-        return categories.filter(c => {
-          const search = searchQuery.toLowerCase();
-          return c.name.toLowerCase().includes(search) || 
-                 (c.description && c.description.toLowerCase().includes(search));
-        });
+      // Remove local search filter since we rely on backend results
+      // const search = searchQuery.toLowerCase();
+      // return c.name.toLowerCase().includes(search) || 
+      //        (c.description && c.description.toLowerCase().includes(search));
     }
 
     // Default: Sort hierarchically
@@ -109,8 +119,15 @@ export class CategoriesTab extends Component<CategoriesTabProps, CategoriesTabSt
     return sorted;
   };
 
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => {
+      this.loadCategories();
+    });
+  };
+
   render() {
-    const { isModalOpen, selectedCategory, searchQuery } = this.state;
+    const { isModalOpen, selectedCategory, searchQuery, currentPage, pageSize, totalItems, categories } = this.state;
+    // We still sort the fetched page hierarchically for presentation
     const filteredCategories = this.getFilteredCategories();
     
     return (
@@ -118,7 +135,7 @@ export class CategoriesTab extends Component<CategoriesTabProps, CategoriesTabSt
         <TableToolbar 
           searchPlaceholder="Search categories..."
           searchValue={searchQuery}
-          onSearchChange={(val) => this.setState({ searchQuery: val })}
+          onSearchChange={(val) => this.setState({ searchQuery: val, currentPage: 1 }, () => this.loadCategories())}
         />
         
         <div className="overflow-x-auto">
@@ -197,7 +214,10 @@ export class CategoriesTab extends Component<CategoriesTabProps, CategoriesTabSt
           </table>
         </div>
         <Pagination 
-          totalItems={filteredCategories.length} 
+          totalItems={totalItems} 
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={this.handlePageChange}
           labelShowing="Showing"
           labelTo="to"
           labelOf="of"

@@ -1,10 +1,10 @@
 import api from '@/lib/axios';
 import { Supplier } from '@/types/partners/supplier';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const SupplierService = {
-  async getAllSuppliers(params?: { search?: string; status?: string }): Promise<Supplier[]> {
-    const response = await api.get<ApiResponse<Supplier[]>>(`/suppliers`, { params });
+  async getAllSuppliers(params?: { search?: string; status?: string; page?: number; limit?: number }): Promise<PaginatedResult<Supplier>> {
+    const response = await api.get<ApiResponse<PaginatedResult<Supplier>>>(`/suppliers`, { params });
     return response.data.data;
   },
 

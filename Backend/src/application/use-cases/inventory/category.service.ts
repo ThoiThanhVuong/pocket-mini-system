@@ -5,6 +5,7 @@ import type { IProductRepository } from '../../../core/interfaces/repositories/i
 import { Category } from '../../../core/domain/entities/warehouse/category.entity';
 import { CategoryMapper } from '../../mappers/category.mapper';
 import { CreateCategoryDto } from '../../dtos/catalog/create-category.dto';
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
 
 @Injectable()
 export class CategoryService implements ICategoryService {
@@ -83,10 +84,10 @@ export class CategoryService implements ICategoryService {
         }
 
         // #3: Kiểm tra có sản phẩm thuộc danh mục không
-        const products = await this.productRepo.findAllWithFilters(undefined, undefined, id);
-        if (products.length > 0) {
+        const products = await this.productRepo.findAllWithFilters(undefined, undefined, id, { page: 1, limit: 1 });
+        if (products.meta.totalItems > 0) {
             throw new BadRequestException(
-                `Không thể xóa danh mục "${category.name}" vì còn ${products.length} sản phẩm thuộc danh mục này. Hãy chuyển sản phẩm sang danh mục khác trước.`
+                `Không thể xóa danh mục "${category.name}" vì còn ${products.meta.totalItems} sản phẩm thuộc danh mục này. Hãy chuyển sản phẩm sang danh mục khác trước.`
             );
         }
 
@@ -97,8 +98,8 @@ export class CategoryService implements ICategoryService {
         return await this.repo.findOneById(id);
     }
 
-    async getAllCategories(search?: string): Promise<Category[]> {
-        return await this.repo.findAllWithSearch(search);
+    async getAllCategories(search?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Category>> {
+        return await this.repo.findAllWithSearch(search, options);
     }
 
     async getChildren(parentId: string): Promise<Category[]> {

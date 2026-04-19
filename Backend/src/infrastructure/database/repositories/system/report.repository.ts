@@ -9,6 +9,7 @@ import {
     InventoryByCategoryItem,
     CustomersKpi,
     CustomersByMonthItem,
+    CustomerRevenueItem,
 } from '../../../../core/interfaces/services/system/report.service.interface';
 
 @Injectable()
@@ -176,6 +177,31 @@ export class ReportRepository implements IReportRepository {
         return rows.map((r: any): CustomersByMonthItem => ({
             month:        r.month,
             newCustomers: Number(r.new_customers),
+        }));
+    }
+
+    async getRevenueByCustomer(interval: string): Promise<CustomerRevenueItem[]> {
+        const rows = await this.dataSource.query(`
+            SELECT 
+                c.id AS customer_id,
+                c.name AS customer_name,
+                COUNT(DISTINCT so.id) AS total_orders,
+                COALESCE(SUM(soi.quantity * soi.price), 0) AS total_revenue
+            FROM customers c
+            LEFT JOIN stock_out so ON so.customer_id = c.id
+                AND so.status IN ('completed', 'approved')
+                AND so.created_at >= NOW() - INTERVAL '${interval}'
+            LEFT JOIN stock_out_items soi ON soi.stock_out_id = so.id
+            GROUP BY c.id, c.name
+            HAVING COUNT(DISTINCT so.id) > 0 OR COALESCE(SUM(soi.quantity * soi.price), 0) > 0
+            ORDER BY total_revenue DESC
+        `);
+        
+        return rows.map((r: any): CustomerRevenueItem => ({
+            customerId: r.customer_id,
+            customerName: r.customer_name,
+            totalOrders: Number(r.total_orders),
+            totalRevenue: Number(r.total_revenue)
         }));
     }
 }

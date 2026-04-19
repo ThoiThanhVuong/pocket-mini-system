@@ -6,6 +6,7 @@ import { Supplier as SupplierEntity } from "../../entities/partners/supplier.ent
 import { Supplier as SupplierDomain } from "../../../../core/domain/entities/partners/supplier.entity";
 import { PartnerStatus } from "../../../../core/domain/enums/partners-status.enum";
 import { Email } from "../../../../core/domain/value-objects/email.value-object";
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 @Injectable()
 export class SupplierRepository implements ISupplierRepository{
     constructor(
@@ -30,7 +31,7 @@ export class SupplierRepository implements ISupplierRepository{
         await this.supplierRepo.save(entity);
         return supplier;
     }
-    async findAllWithFilters(search?:string,status?:string):Promise<SupplierDomain[]>{
+    async findAllWithFilters(search?:string,status?:string, options?: IPaginationOptions):Promise<IPaginatedResult<SupplierDomain>>{
         const query = this.supplierRepo.createQueryBuilder('supplier');
         if(search){
             query.andWhere('(supplier.name ILIKE :search OR supplier.email ILIKE :search OR supplier.phone ILIKE :search)', { search: `%${search}%` });
@@ -38,17 +39,58 @@ export class SupplierRepository implements ISupplierRepository{
         if(status){
             query.andWhere('supplier.status = :status', { status });
         }
-        const entities = await query.getMany();
-        return entities
-            .map(e => {
-                try {
-                    return this.toDomain(e);
-                } catch (error) {
-                    console.warn(`[SupplierRepository] Skipping invalid record ID ${e.id}: ${(error as Error).message}`);
-                    return null;
+
+        if (options) {
+            const page = options.page || 1;
+            const limit = options.limit || 10;
+            const skip = (page - 1) * limit;
+
+            query.skip(skip).take(limit);
+
+            if (options.sortBy) {
+                query.orderBy(`supplier.${options.sortBy}`, options.sortOrder || 'ASC');
+            } else {
+                query.orderBy('supplier.createdAt', 'DESC');
+            }
+
+            const [result, totalItems] = await query.getManyAndCount();
+            const items = result
+                .map(e => {
+                    try { return this.toDomain(e); } 
+                    catch (error) { return null; }
+                })
+                .filter(item => item !== null) as SupplierDomain[];
+
+            return {
+                items,
+                meta: {
+                    totalItems,
+                    itemCount: items.length,
+                    itemsPerPage: limit,
+                    totalPages: Math.ceil(totalItems / limit),
+                    currentPage: page
                 }
+            };
+        }
+
+        const entities = await query.getMany();
+        const items = entities
+            .map(e => {
+                try { return this.toDomain(e); } 
+                catch (error) { return null; }
             })
             .filter(item => item !== null) as SupplierDomain[];
+            
+        return {
+            items,
+            meta: {
+                totalItems: items.length,
+                itemCount: items.length,
+                itemsPerPage: items.length || 10,
+                totalPages: 1,
+                currentPage: 1
+            }
+        };
     }
     async findOneById(id: any): Promise<SupplierDomain | null> {
         const entity = await this.supplierRepo.findOne({ 

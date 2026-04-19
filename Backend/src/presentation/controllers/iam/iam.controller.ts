@@ -114,9 +114,17 @@ export class IamController {
         @Query('search') search?: string,
         @Query('role') role?: string,
         @Query('status') status?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
     ) {
-        const users = await this.iamService.getAllUsers(search, role, status);
-        return users.map(user => UserMapper.toResponse(user));
+        const paginatedResult = await this.iamService.getAllUsers(search, role, status, {
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        return {
+            items: paginatedResult.items.map(user => UserMapper.toResponse(user)),
+            meta: paginatedResult.meta
+        };
     }
 
     @Get('users/:userId')

@@ -33,8 +33,13 @@ interface WarehousesState {
   filterStatus: string;
   isStockModalOpen: boolean;
   selectedWarehouseForStock: any | null;
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 export default class WarehousesPage extends Component<{}, WarehousesState> {
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(props: {}) {
     super(props);
     this.state = {
@@ -44,14 +49,23 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
       searchTerm: '',
       filterStatus: '',
       isStockModalOpen: false,
-      selectedWarehouseForStock: null
+      selectedWarehouseForStock: null,
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
     };
   }
 
   loadWarehouses = async () => {
     try {
-      const data = await WarehouseService.getAllWarehouses();
-      const formattedWarehouses = data.map((w: any) => ({
+      const { currentPage, pageSize, searchTerm, filterStatus } = this.state;
+      const data = await WarehouseService.getAllWarehouses({ 
+        page: currentPage, 
+        limit: pageSize,
+        search: searchTerm,
+        status: filterStatus || undefined
+      });
+      const formattedWarehouses = data.items.map((w: any) => ({
         ...w,
         city: w.city || 'N/A',
         country: w.country || 'Việt Nam',
@@ -60,7 +74,7 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
         manager: w.manager || 'Chưa cập nhật',
         status: w.status === 'ACTIVE' || w.status === 'Active' ? 'Active' : 'Inactive'
       }));
-      this.setState({ warehouses: formattedWarehouses });
+      this.setState({ warehouses: formattedWarehouses, totalItems: data.meta.totalItems });
     } catch (error) {
       console.error('Failed to fetch warehouses:', error);
     }
@@ -110,11 +124,21 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
   };
 
   handleSearchChange = (value: string) => {
-    this.setState({ searchTerm: value });
+    this.setState({ searchTerm: value, currentPage: 1 });
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.loadWarehouses(), 500);
   };
 
   handleFilterChange = (value: string) => {
-    this.setState({ filterStatus: value });
+    this.setState({ filterStatus: value, currentPage: 1 }, () => {
+      this.loadWarehouses();
+    });
+  };
+  
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => {
+      this.loadWarehouses();
+    });
   };
   getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -130,17 +154,9 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
     return Math.round(current / capacity * 100);
   };
   render() {
-    const { warehouses, isModalOpen, selectedWarehouse, searchTerm, filterStatus } = this.state;
-    
-    // Áp dụng tìm kiếm và lọc client-side
-    const filteredWarehouses = warehouses.filter(w => {
-      const matchSearch = w.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          w.city?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchStatus = filterStatus ? w.status === filterStatus : true;
-      return matchSearch && matchStatus;
-    });
-
-    const { isStockModalOpen, selectedWarehouseForStock } = this.state;
+    const { warehouses, isModalOpen, selectedWarehouse, searchTerm, filterStatus, currentPage, pageSize, totalItems, isStockModalOpen, selectedWarehouseForStock } = this.state;
+    // Server-side filtered already
+    const displayWarehouses = warehouses;
 
     return (
       <div>
@@ -198,7 +214,7 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredWarehouses.map((warehouse, index) =>
+                {displayWarehouses.map((warehouse, index) =>
                 <motion.tr
                   key={warehouse.id}
                   className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
@@ -299,7 +315,18 @@ export default class WarehousesPage extends Component<{}, WarehousesState> {
             </table>
           </div>
 
-          <Pagination totalItems={filteredWarehouses.length} />
+          <Pagination 
+            totalItems={totalItems} 
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={this.handlePageChange}
+            labelShowing="Đang hiển thị"
+            labelTo="đến"
+            labelOf="trong"
+            labelResults="kho"
+            labelPrevious="Trước"
+            labelNext="Sau"
+          />
         </div>
 
         {isModalOpen &&

@@ -98,7 +98,7 @@ export class StockOutController {
             { header: 'Ngày tạo', key: 'createdAt', width: 25 },
         ];
         
-        const formattedData = data.map(item => ({
+        const formattedData = data.items.map(item => ({
             ...item,
             totalAmount: item.totalAmount.toLocaleString('vi-VN') + ' đ',
             createdAt: new Date(item.createdAt).toLocaleString('vi-VN')
@@ -113,7 +113,14 @@ export class StockOutController {
 
     @Get()
     @RequirePermissions(PermissionCode.STOCK_OUT_VIEW)
-    async findAll(@Req() req: any, @Query('warehouseId') warehouseId?: string, @Query('status') status?: string) {
+    async findAll(
+        @Req() req: any, 
+        @Query('warehouseId') warehouseId?: string, 
+        @Query('status') status?: string,
+        @Query('search') search?: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
         const userRoles = (req.user.roles || []).map((r: any) => (r.roleCode as string)?.toLowerCase());
         const isSystemAdmin = userRoles.includes('admin') || userRoles.includes('system_admin');
         const userWarehouseIds = req.user.warehouseIds || [];
@@ -125,7 +132,7 @@ export class StockOutController {
                 } else if (userWarehouseIds.length > 1) {
                     throw new ForbiddenException('Vui lòng chọn kho cụ thể để xem danh sách');
                 } else {
-                    return [];
+                    return { items: [], meta: { totalItems: 0, itemCount: 0, itemsPerPage: limit || 12, totalPages: 0, currentPage: page || 1 } };
                 }
             } else {
                 if (!userWarehouseIds.includes(warehouseId)) {
@@ -134,25 +141,32 @@ export class StockOutController {
             }
         }
 
-        const list = await this.stockOutService.getAll(warehouseId, status);
-        return list.map(s => ({
-            id: s.id,
-            customerId: s.customerId,
-            customerName: (s as any).customerName || '',
-            warehouseId: s.warehouseId,
-            warehouseName: (s as any).warehouseName || '',
-            referenceCode: s.referenceCode,
-            status: s.status,
-            totalAmount: s.calculateTotalAmount(),
-            createdAt: s.createdAt,
-            items: s.items.map(i => ({
-                id: i.id,
-                productId: i.productId,
-                productName: (i as any).productName || '',
-                quantity: i.quantity,
-                price: i.price,
+        const result = await this.stockOutService.getAll(
+            { warehouseId, status, search },
+            { page: page ? Number(page) : 1, limit: limit ? Number(limit) : 12 }
+        );
+
+        return {
+            items: result.items.map(s => ({
+                id: s.id,
+                customerId: s.customerId,
+                customerName: (s as any).customerName || '',
+                warehouseId: s.warehouseId,
+                warehouseName: (s as any).warehouseName || '',
+                referenceCode: s.referenceCode,
+                status: s.status,
+                totalAmount: s.calculateTotalAmount(),
+                createdAt: s.createdAt,
+                items: s.items.map(i => ({
+                    id: i.id,
+                    productId: i.productId,
+                    productName: (i as any).productName || '',
+                    quantity: i.quantity,
+                    price: i.price,
+                })),
             })),
-        }));
+            meta: result.meta
+        };
     }
 
     @Get(':id')
@@ -176,5 +190,30 @@ export class StockOutController {
             totalAmount: s.calculateTotalAmount(),
             createdAt: s.createdAt,
         };
+    }
+
+    @Get('customer/:customerId')
+    @RequirePermissions(PermissionCode.STOCK_OUT_VIEW)
+    async findByCustomer(@Param('customerId') customerId: string, @Req() req: any) {
+        const list = await this.stockOutService.getByCustomer(customerId);
+        // Map to response dto
+        return list.map(s => ({
+            id: s.id,
+            customerId: s.customerId,
+            customerName: (s as any).customerName || '',
+            warehouseId: s.warehouseId,
+            warehouseName: (s as any).warehouseName || '',
+            referenceCode: s.referenceCode,
+            status: s.status,
+            totalAmount: s.calculateTotalAmount(),
+            createdAt: s.createdAt,
+            items: s.items.map(i => ({
+                id: i.id,
+                productId: i.productId,
+                productName: (i as any).productName || '',
+                quantity: i.quantity,
+                price: i.price,
+            })),
+        }));
     }
 }

@@ -13,6 +13,7 @@ import { DeepPartial } from '../../../../core/interfaces/repositories/base.repos
 import { UserStatus } from '../../../../core/domain/enums/user-status.enum';
 import { Email } from '../../../../core/domain/value-objects/email.value-object';
 import { Warehouse as WarehouseEntity } from '../../entities/warehouse/warehouse.entity';
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 
 @Injectable()
 export class UserRepository implements IUserRepository {
@@ -162,11 +163,10 @@ export class UserRepository implements IUserRepository {
     );
   }
 
-  async findAllWithFilters(search?: string, role?: string, status?: string): Promise<UserDomain[]> {
+  async findAllWithFilters(search?: string, role?: string, status?: string, options?: IPaginationOptions): Promise<IPaginatedResult<UserDomain>> {
     const query = this.userRepo.createQueryBuilder('user')
         .leftJoinAndSelect('user.roles', 'role')
         .leftJoinAndSelect('user.warehouses', 'warehouse');
-        // .leftJoinAndSelect('role.permissions', 'permission'); // Optimization: Not needed for list view
 
     if (search) {
         query.andWhere('(user.fullName ILIKE :search OR user.email ILIKE :search OR user.phoneNumber ILIKE :search)', { search: `%${search}%` });
@@ -178,18 +178,49 @@ export class UserRepository implements IUserRepository {
 
     if (status) {
         query.andWhere('user.status = :status', { status });
-    } else {
-        // Default only active? Or all? Let's show all if no status filter is distinct, 
-        // OR better, adhere to previous logic: findAll showed ACTIVE.
-        // But for management list, we likely want to see ALL statuses if not specified, or just ACTIVE.
-        // Let's assume management wants to see all, but filterable. 
-        // If status is NOT provided, we might show all non-deleted? 
-        // For now, let's show all.
+    }
+
+    if (options) {
+        const page = options.page || 1;
+        const limit = options.limit || 10;
+        const skip = (page - 1) * limit;
+
+        query.skip(skip).take(limit);
+
+        if (options.sortBy) {
+            query.orderBy(`user.${options.sortBy}`, options.sortOrder || 'ASC');
+        } else {
+            query.orderBy('user.createdAt', 'DESC');
+        }
+
+        const [entities, totalItems] = await query.getManyAndCount();
+        const items = entities.map(e => this.toDomain(e));
+
+        return {
+            items,
+            meta: {
+                totalItems,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages: Math.ceil(totalItems / limit),
+                currentPage: page
+            }
+        };
     }
 
     query.orderBy('user.createdAt', 'DESC');
-
     const entities = await query.getMany();
-    return entities.map(e => this.toDomain(e));
+    const items = entities.map(e => this.toDomain(e));
+    
+    return {
+        items,
+        meta: {
+            totalItems: items.length,
+            itemCount: items.length,
+            itemsPerPage: items.length || 10,
+            totalPages: 1,
+            currentPage: 1
+        }
+    };
   }
 }

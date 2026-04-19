@@ -32,17 +32,27 @@ export class StockIn extends Component<{}, StockInState> {
       items: [{ productId: '', quantity: '', unitCost: '' }],
       isSubmitting: false,
       error: null,
-      selectedViewId: null
+      selectedViewId: null,
+      currentPage: 1,
+      pageSize: 12,
+      totalItems: 0,
+      search: '',
+      filterWarehouseId: '',
+      filterSupplierId: ''
     };
   }
 
   async componentDidMount() {
     try {
-      const [suppliersData, productsData, warehousesData] = await Promise.all([
+      const [suppliersResult, productsResult, warehousesResult] = await Promise.all([
         SupplierService.getAllSuppliers(),
         ProductService.getAllProducts(),
         WarehouseService.getAllWarehouses()
       ]);
+      
+      const suppliersData = suppliersResult.items;
+      const productsData = productsResult.items;
+      const warehousesData = warehousesResult.items;
       
       const user = useAuthStore.getState().user;
       const roles = (user?.roles || []).map(r => String(r).toUpperCase());
@@ -67,17 +77,26 @@ export class StockIn extends Component<{}, StockInState> {
 
   loadStockIns = async () => {
     try {
-      const [data, paymentsData] = await Promise.all([
-        StockInService.getAllStockIns(),
+      const { search, filterWarehouseId, filterSupplierId, currentPage, pageSize } = this.state as any;
+      const [response, paymentsData] = await Promise.all([
+        StockInService.getAllStockIns({
+          search,
+          warehouseId: filterWarehouseId,
+          page: currentPage,
+          limit: pageSize
+        }),
         api.get('/payments').then(res => res.data.data).catch(() => [])
       ]);
-      const mappedData = (data || []).map((d: any) => {
+
+      const mappedData = (response.items || []).map((d: any) => {
         const p = paymentsData.find((pmt: any) => pmt.referenceId === d.id);
         return { ...d, paymentStatus: p?.status || 'pending' };
       });
-      // Sort by newest first
-      mappedData.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      this.setState({ stockIns: mappedData });
+
+      this.setState({ 
+        stockIns: mappedData,
+        totalItems: response.meta.totalItems 
+      });
     } catch (error) {
       console.error('Failed to load stock-ins:', error);
     }
@@ -792,19 +811,10 @@ export class StockIn extends Component<{}, StockInState> {
       CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     };
 
-    const filtered = stockIns.filter((so: any) => {
-      const warehouseName = so.warehouseName || warehouses.find((w: any) => w.id === so.warehouseId)?.name || '';
-      const suppName = so.supplierName || suppliers.find((c: any) => c.id === so.supplierId)?.name || '';
-      const matchSearch = !search || 
-        (so.referenceCode || '').toLowerCase().includes(search.toLowerCase()) ||
-        suppName.toLowerCase().includes(search.toLowerCase());
-      const matchWarehouse = !filterWarehouseId || so.warehouseId === filterWarehouseId;
-      const matchSupplier = !filterSupplierId || so.supplierId === filterSupplierId;
-      return matchSearch && matchWarehouse && matchSupplier;
-    });
-
-    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-    const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    // Server-side filtered already, but we keep the mapping for UI display
+    const paged = stockIns;
+    const totalItems = (this.state as any).totalItems || 0;
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
 
     return (
       <div className="mt-8">
@@ -825,12 +835,12 @@ export class StockIn extends Component<{}, StockInState> {
             type="text"
             placeholder="Tìm mã phiếu / nhà cung cấp..."
             value={search}
-            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
             className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <select
             value={filterWarehouseId}
-            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ filterWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho</option>
@@ -838,7 +848,7 @@ export class StockIn extends Component<{}, StockInState> {
           </select>
           <select
             value={filterSupplierId}
-            onChange={e => this.setState({ filterSupplierId: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ filterSupplierId: e.target.value, currentPage: 1 } as any, () => this.loadStockIns())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả nhà cung cấp</option>
@@ -924,19 +934,19 @@ export class StockIn extends Component<{}, StockInState> {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
-            <span>Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length} phiếu</span>
+            <span>Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems)}–{Math.min(currentPage * PAGE_SIZE, totalItems)} / {totalItems} phiếu</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any)}
+              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any, () => this.loadStockIns())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ‹
               </button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => this.setState({ currentPage: p } as any)}
+                <button key={p} onClick={() => this.setState({ currentPage: p } as any, () => this.loadStockIns())}
                   className={`px-3 py-1 rounded border ${p === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   {p}
                 </button>
               ))}
-              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 } as any)}
+              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 } as any, () => this.loadStockIns())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ›
               </button>

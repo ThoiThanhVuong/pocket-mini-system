@@ -44,6 +44,15 @@ export class StockOutRepository implements IStockOutRepository {
         return list.map(e => this.toDomain(e));
     }
 
+    async findByCustomer(customerId: string): Promise<StockOutDomain[]> {
+        const list = await this.repo.find({
+            where: { customer: { id: customerId } },
+            relations: ['customer', 'warehouse', 'stockOutItems', 'stockOutItems.product'],
+            order: { createdAt: 'DESC' }
+        });
+        return list.map(e => this.toDomain(e));
+    }
+
     async findByStatus(status: string): Promise<StockOutDomain[]> {
         const list = await this.repo.find({
             where: { status },
@@ -60,6 +69,55 @@ export class StockOutRepository implements IStockOutRepository {
     async remove(domain: StockOutDomain): Promise<StockOutDomain> {
         await this.repo.delete(domain.id);
         return domain;
+    }
+
+    async findAllPaginated(
+        options: { page: number; limit: number; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
+        filters?: { warehouseId?: string; status?: string; search?: string; customerId?: string }
+    ): Promise<{ items: StockOutDomain[]; meta: any }> {
+        const { page, limit, sortBy = 'createdAt', sortOrder = 'DESC' } = options;
+        const query = this.repo.createQueryBuilder('stock_out')
+            .leftJoinAndSelect('stock_out.customer', 'customer')
+            .leftJoinAndSelect('stock_out.warehouse', 'warehouse')
+            .leftJoinAndSelect('stock_out.user', 'user')
+            .leftJoinAndSelect('stock_out.stockOutItems', 'items')
+            .leftJoinAndSelect('items.product', 'product');
+
+        if (filters?.warehouseId) {
+            query.andWhere('stock_out.warehouse_id = :warehouseId', { warehouseId: filters.warehouseId });
+        }
+
+        if (filters?.status) {
+            query.andWhere('stock_out.status = :status', { status: filters.status });
+        }
+
+        if (filters?.customerId) {
+            query.andWhere('stock_out.customer_id = :customerId', { customerId: filters.customerId });
+        }
+
+        if (filters?.search) {
+            query.andWhere('stock_out.reference_code ILIKE :search', { search: `%${filters.search}%` });
+        }
+
+        const [entities, total] = await query
+            .orderBy(`stock_out.${sortBy}`, sortOrder)
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getManyAndCount();
+
+        const items = entities.map(e => this.toDomain(e));
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items,
+            meta: {
+                totalItems: total,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages,
+                currentPage: page,
+            }
+        };
     }
 
     async saveNew(

@@ -6,7 +6,8 @@ import { Product } from "../../../core/domain/entities/warehouse/product.entity"
 import { CreateProductDto } from "../../dtos/catalog/create-product.dto";
 import { UpdateProductDto } from "../../dtos/catalog/update-product.dto";
 import { ProductMapper } from "../../mappers/product.mapper";
-@Injectable()
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
+@Injectable()   
 export class ProductService implements IProductService{
     constructor(
         @Inject('IProductRepository')
@@ -86,13 +87,13 @@ export class ProductService implements IProductService{
         return await this.productRepo.findOneById(id);
     }
 
-    async getAllProducts(search?: string, isActive?: boolean, categoryId?: string): Promise<Product[]> {
-        return await this.productRepo.findAllWithFilters(search, isActive, categoryId);
+    async getAllProducts(search?: string, isActive?: boolean, categoryId?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Product>> {
+        return await this.productRepo.findAllWithFilters(search, isActive, categoryId, options);
     }
 
     async countProducts(search?: string, isActive?: boolean, categoryId?: string): Promise<number> {
         const products = await this.productRepo.findAllWithFilters(search, isActive, categoryId);
-        return products.length;
+        return products.meta.totalItems;
     }
 
     async updatePrice(id: string, newPrice: number): Promise<Product> {

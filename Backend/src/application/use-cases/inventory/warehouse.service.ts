@@ -4,6 +4,7 @@ import { Warehouse } from '../../../core/domain/entities/warehouse/warehouse.ent
 import type { IWarehouseRepository } from '../../../core/interfaces/repositories/inventory/warehouse.repository.interface';
 import type { IStockRepository } from '../../../core/interfaces/repositories/inventory/stock.repository.interface';
 import { IWarehouseService } from '../../../core/interfaces/services/inventory/warehouse.service.interface';
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
 
 export const IWarehouseRepositoryKey = 'IWarehouseRepository';
 
@@ -74,8 +75,8 @@ export class WarehouseService implements IWarehouseService {
         await this.warehouseRepo.save(warehouse);
     }
 
-    async getAllWarehouses(): Promise<Warehouse[]> {
-        return this.warehouseRepo.findAll();
+    async getAllWarehouses(options?: IPaginationOptions, allowedIds?: string[], search?: string, status?: string): Promise<IPaginatedResult<Warehouse>> {
+        return this.warehouseRepo.findAllPaginated(options, allowedIds, search, status);
     }
 
     async getWarehouseById(id: string): Promise<Warehouse | null> {

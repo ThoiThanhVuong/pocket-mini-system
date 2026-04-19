@@ -25,6 +25,10 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  
   
   // Search & Filter State
   const [searchText, setSearchText] = useState('');
@@ -55,17 +59,20 @@ export default function UsersPage() {
           return; // Skip because the searchText effect will run initially
       }
       if (activeTab === 'users') loadUsers();
-  }, [roleFilter, statusFilter, activeTab]);
+  }, [roleFilter, statusFilter, activeTab, currentPage]);
 
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const data = await UserService.getAllUsers({
+      const response = await UserService.getAllUsers({
           search: searchText,
           role: roleFilter,
-          status: statusFilter
+          status: statusFilter,
+          page: currentPage,
+          limit: pageSize
       });
-      setUsers(data);
+      setUsers(response.items);
+      setTotalItems(response.meta.totalItems);
     } catch (error: any) {
       console.error('Error loading users:', error);
       toast.error('Không thể tải danh sách người dùng');
@@ -216,7 +223,7 @@ export default function UsersPage() {
               <TableToolbar
                 searchPlaceholder="Tìm kiếm người dùng..."
                 searchValue={searchText}
-                onSearchChange={setSearchText}
+                onSearchChange={(val) => { setSearchText(val); setCurrentPage(1); }}
                 filters={[
                     { 
                         label: 'Vai trò', 
@@ -225,7 +232,7 @@ export default function UsersPage() {
                             label: role.name
                         })),
                         value: roleFilter,
-                        onChange: setRoleFilter
+                        onChange: (val) => { setRoleFilter(val); setCurrentPage(1); }
                     }, 
                     { 
                         label: 'Trạng thái',
@@ -234,7 +241,7 @@ export default function UsersPage() {
                             { value: 'inactive', label: 'Không hoạt động' },
                         ],
                         value: statusFilter,
-                        onChange: setStatusFilter
+                        onChange: (val) => { setStatusFilter(val); setCurrentPage(1); }
                     }
                 ]}
               />
@@ -329,7 +336,18 @@ export default function UsersPage() {
                       </tbody>
                     </table>
                   </div>
-                  <Pagination totalItems={users.length} />
+                  <Pagination 
+                    totalItems={totalItems} 
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    labelShowing="Đang hiển thị"
+                    labelTo="đến"
+                    labelOf="trong"
+                    labelResults="kết quả"
+                    labelPrevious="Trước"
+                    labelNext="Sau"
+                  />
                 </>
               )}
           </div>

@@ -216,34 +216,41 @@ ON CONFLICT DO NOTHING;
 INSERT INTO "warehouses" ("name", "location", "status", "manager") VALUES
 ('Kho Tổng Miền Bắc', 'Hà Nội', 'ACTIVE', 'Trần Quản Lý'),
 ('Kho Trung Chuyển Miền Trung', 'Đà Nẵng', 'ACTIVE', 'Trần Quản Lý'),
-('Kho Trung Tâm Miền Nam', 'TP. HCM', 'ACTIVE', 'Trần Quản Lý');
+('Kho Trung Tâm Miền Nam', 'TP. HCM', 'ACTIVE', 'Trần Quản Lý')
+ON CONFLICT ("name") DO NOTHING;
 
 -- 5.7 Seed Categories
 INSERT INTO "categories" ("name", "description", "level") VALUES
 ('Thiết Bị Lưu Trữ', 'Ổ cứng HDD, SSD, USB', 0),
 ('Phụ Kiện Máy Tính', 'Bàn phím, Chuột, Tai nghe', 0),
-('Thiết Bị Mạng', 'Router, Switch, Cáp mạng', 0);
+('Thiết Bị Mạng', 'Router, Switch, Cáp mạng', 0)
+ON CONFLICT ("name") DO NOTHING;
 
 -- 5.8 Seed Products (5 Products)
 INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
 SELECT 'PRD01', 'Ổ cứng SSD Samsung 1TB', 'SSD NVMe PCIe Gen 4', '', 'Cái', 2100000, true, 10, c.id
-FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1;
+FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1
+ON CONFLICT ("sku") DO NOTHING;
 
 INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
 SELECT 'PRD02', 'Ổ cứng HDD WD Blue 2TB', 'HDD Sata 3 7200rpm', '', 'Cái', 1350000, true, 15, c.id
-FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1;
+FROM "categories" c WHERE c.name = 'Thiết Bị Lưu Trữ' LIMIT 1
+ON CONFLICT ("sku") DO NOTHING;
 
 INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
 SELECT 'PRD03', 'Bàn phím cơ Logitech G Pro', 'Bàn phím Gaming switch Blue', '', 'Cái', 2450000, true, 5, c.id
-FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1;
+FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1
+ON CONFLICT ("sku") DO NOTHING;
 
 INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
 SELECT 'PRD04', 'Chuột Razer DeathAdder V2', 'Chuột Gaming có dây', '', 'Cái', 1100000, true, 8, c.id
-FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1;
+FROM "categories" c WHERE c.name = 'Phụ Kiện Máy Tính' LIMIT 1
+ON CONFLICT ("sku") DO NOTHING;
 
 INSERT INTO "products" ("sku", "name", "description", "image", "unit", "price", "is_active", "min_stock_level", "category_id")
 SELECT 'PRD05', 'Router Wifi 6 TP-Link AX50', 'Phát wifi 2 băng tần chuẩn AX3000', '', 'Cái', 1600000, true, 12, c.id
-FROM "categories" c WHERE c.name = 'Thiết Bị Mạng' LIMIT 1;
+FROM "categories" c WHERE c.name = 'Thiết Bị Mạng' LIMIT 1
+ON CONFLICT ("sku") DO NOTHING;
 
 -- 5.9 Seed Attendance
 INSERT INTO "attendance" ("user_id", "date", "check_in", "check_out", "working_hours", "overtime_hours", "status", "note")

@@ -63,6 +63,51 @@ export class StockInRepository implements IStockInRepository {
         return domain;
     }
 
+    async findAllPaginated(
+        options: { page: number; limit: number; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
+        filters?: { warehouseId?: string; status?: string; search?: string }
+    ): Promise<{ items: StockInDomain[]; meta: any }> {
+        const { page, limit, sortBy = 'createdAt', sortOrder = 'DESC' } = options;
+        const query = this.repo.createQueryBuilder('stock_in')
+            .leftJoinAndSelect('stock_in.supplier', 'supplier')
+            .leftJoinAndSelect('stock_in.warehouse', 'warehouse')
+            .leftJoinAndSelect('stock_in.user', 'user')
+            .leftJoinAndSelect('stock_in.stockInItems', 'items')
+            .leftJoinAndSelect('items.product', 'product');
+
+        if (filters?.warehouseId) {
+            query.andWhere('stock_in.warehouse_id = :warehouseId', { warehouseId: filters.warehouseId });
+        }
+
+        if (filters?.status) {
+            query.andWhere('stock_in.status = :status', { status: filters.status });
+        }
+
+        if (filters?.search) {
+            query.andWhere('stock_in.reference_code ILIKE :search', { search: `%${filters.search}%` });
+        }
+
+        const [entities, total] = await query
+            .orderBy(`stock_in.${sortBy}`, sortOrder)
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getManyAndCount();
+
+        const items = entities.map(e => this.toDomain(e));
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items,
+            meta: {
+                totalItems: total,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages,
+                currentPage: page,
+            }
+        };
+    }
+
     // Save new entity with items (used in service for creation)
     async saveNew(
         id: string, supplierId: string, warehouseId: string, userId: string,

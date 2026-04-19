@@ -25,6 +25,9 @@ interface ProductsTabState {
   searchQuery: string;
   categoryFilter: string;
   statusFilter: string;
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 
 interface ProductsTabProps {
@@ -41,27 +44,39 @@ export class ProductsTab extends Component<ProductsTabProps, ProductsTabState> {
       selectedProduct: null,
       searchQuery: '',
       categoryFilter: '',
-      statusFilter: ''
+      statusFilter: '',
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
     };
   }
 
   loadProducts = async () => {
     try {
-      const cats = await CategoryService.getAllCategories();
-      const catMap = cats.reduce((acc: any, cat) => {
+      const catsResult = await CategoryService.getAllCategories();
+      const catMap = catsResult.items.reduce((acc: any, cat) => {
         acc[cat.id] = cat.name;
         return acc;
       }, {});
 
-      const data = await ProductService.getAllProducts();
-      const formattedProducts = data.map((p: any) => ({
+      const { searchQuery, categoryFilter, statusFilter, currentPage, pageSize } = this.state;
+      const statusParam = statusFilter ? statusFilter === 'Active' : undefined;
+      const result = await ProductService.getAllProducts({
+        search: searchQuery,
+        categoryId: categoryFilter,
+        isActive: statusParam,
+        page: currentPage,
+        limit: pageSize
+      });
+
+      const formattedProducts = result.items.map((p: any) => ({
         ...p,
         categoryId: p.categoryId,
         category: catMap[p.categoryId] || 'Uncategorized',
         stock: p.stockQuantity ?? 0,
         status: p.isActive ? 'Active' : 'Inactive'
       }));
-      this.setState({ products: formattedProducts, categories: cats });
+      this.setState({ products: formattedProducts, totalItems: result.meta.totalItems, categories: catsResult.items });
     } catch (error) {
       console.error('Failed to fetch data:', error);
     }
@@ -111,33 +126,30 @@ export class ProductsTab extends Component<ProductsTabProps, ProductsTabState> {
     }
   };
 
-  getFilteredProducts = () => {
-    const { products, searchQuery, categoryFilter, statusFilter } = this.state;
-    return products.filter(p => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = categoryFilter ? p.categoryId === categoryFilter : true;
-      const matchesStatus = statusFilter ? p.status === statusFilter : true;
-      return matchesSearch && matchesCategory && matchesStatus;
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => {
+      this.loadProducts();
     });
   };
 
+  // Filter properties are now handled server-side
+  // We remove getFilteredProducts and client side slicing.
+
   render() {
-    const { isModalOpen, selectedProduct, categories, searchQuery, categoryFilter, statusFilter } = this.state;
-    const filteredProducts = this.getFilteredProducts();
+    const { products, totalItems, isModalOpen, selectedProduct, categories, searchQuery, categoryFilter, statusFilter, currentPage, pageSize } = this.state;
     
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden mt-6">
         <TableToolbar 
           searchPlaceholder="Search products by name or SKU..."
           searchValue={searchQuery}
-          onSearchChange={(val) => this.setState({ searchQuery: val })}
+          onSearchChange={(val) => this.setState({ searchQuery: val, currentPage: 1 }, () => this.loadProducts())}
           filters={[
             { 
               label: 'Category',
               value: categoryFilter,
               options: categories.map(c => ({ value: c.id, label: c.name })),
-              onChange: (val) => this.setState({ categoryFilter: val })
+              onChange: (val) => this.setState({ categoryFilter: val, currentPage: 1 }, () => this.loadProducts())
             }, 
             { 
               label: 'Status',
@@ -146,7 +158,7 @@ export class ProductsTab extends Component<ProductsTabProps, ProductsTabState> {
                 { value: 'Active', label: 'Active' },
                 { value: 'Inactive', label: 'Inactive' }
               ],
-              onChange: (val) => this.setState({ statusFilter: val })
+              onChange: (val) => this.setState({ statusFilter: val, currentPage: 1 }, () => this.loadProducts())
             }
           ]}
         />
@@ -176,7 +188,7 @@ export class ProductsTab extends Component<ProductsTabProps, ProductsTabState> {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredProducts.length > 0 ? filteredProducts.map((product, index) =>
+              {products.length > 0 ? products.map((product, index) =>
               <motion.tr
                 key={product.id}
                 className="hover:bg-gray-50 dark:hover:bg-gray-700/30"
@@ -247,7 +259,10 @@ export class ProductsTab extends Component<ProductsTabProps, ProductsTabState> {
           </table>
         </div>
         <Pagination 
-          totalItems={filteredProducts.length} 
+          totalItems={totalItems} 
+          currentPage={currentPage}
+          pageSize={pageSize}
+          onPageChange={this.handlePageChange}
           labelShowing="Showing"
           labelTo="to"
           labelOf="of"

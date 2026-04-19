@@ -60,7 +60,7 @@ export class WarehouseStockModal extends Component<WarehouseStockModalProps, War
       
       // Fetch all products so we can map names/SKUs quickly
       const allProducts = await ProductService.getAllProducts();
-      const productMap = new Map(allProducts.map(p => [p.id, p]));
+      const productMap = new Map((allProducts.items || []).map(p => [p.id, p]));
 
       const itemsToDisplay: StockItemDisplay[] = stockData.map(item => {
         const product = productMap.get(item.productId);

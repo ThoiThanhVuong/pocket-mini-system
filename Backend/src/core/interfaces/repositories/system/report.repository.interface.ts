@@ -6,6 +6,7 @@ import {
     InventoryByCategoryItem,
     CustomersKpi,
     CustomersByMonthItem,
+    CustomerRevenueItem,
     ReportPeriod,
 } from '../../services/system/report.service.interface';
 
@@ -24,4 +25,5 @@ export interface IReportRepository {
     // Customers
     getCustomersKpi(interval: string): Promise<CustomersKpi>;
     getCustomersByMonth(months: number): Promise<CustomersByMonthItem[]>;
+    getRevenueByCustomer(interval: string): Promise<CustomerRevenueItem[]>;
 }

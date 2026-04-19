@@ -1,11 +1,11 @@
 import api from '@/lib/axios';
 import { Warehouse, CreateWarehouseDto, UpdateWarehouseDto } from '@/types/inventory/warehouse';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const WarehouseService = {
-  async getAllWarehouses(all: boolean = false): Promise<Warehouse[]> {
-    const response = await api.get<ApiResponse<Warehouse[]>>('/warehouses', {
-      params: { all }
+  async getAllWarehouses(params?: { all?: boolean; page?: number; limit?: number; search?: string; status?: string }): Promise<PaginatedResult<Warehouse>> {
+    const response = await api.get<ApiResponse<PaginatedResult<Warehouse>>>('/warehouses', {
+      params: params
     });
     return response.data.data;
   },

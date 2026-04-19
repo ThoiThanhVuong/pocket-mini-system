@@ -67,6 +67,13 @@ export interface CustomersReport {
     byMonth: CustomersByMonthItem[];
 }
 
+export interface CustomerRevenueItem {
+    customerId: string;
+    customerName: string;
+    totalOrders: number;
+    totalRevenue: number;
+}
+
 // ─── Service ──────────────────────────────────────────────
 export const ReportService = {
     async getSalesReport(period: ReportPeriod = 'month'): Promise<SalesReport> {
@@ -95,6 +102,14 @@ export const ReportService = {
     },
     async exportCustomersReport(period: ReportPeriod = 'month'): Promise<Blob> {
         const res = await api.get('/reports/customers/export', { params: { period }, responseType: 'blob' });
+        return res.data;
+    },
+    async getRevenueByCustomerReport(period: ReportPeriod = 'month'): Promise<CustomerRevenueItem[]> {
+        const res = await api.get('/reports/revenue-by-customer', { params: { period } });
+        return res.data.data;
+    },
+    async exportRevenueByCustomer(period: ReportPeriod = 'month'): Promise<Blob> {
+        const res = await api.get('/reports/revenue-by-customer/export', { params: { period }, responseType: 'blob' });
         return res.data;
     },
 };

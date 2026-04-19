@@ -1,11 +1,12 @@
 import { StockTransfer } from '../../../domain/entities/warehouse/stock-transfer.entity';
-
-export const IStockTransferServiceKey = 'IStockTransferService';
+import { IPaginationOptions, IPaginatedResult } from '../../../../shared/types/pagination.type';
 
 export interface StockTransferItemInput {
     productId: string;
     quantity: number;
 }
+
+export const IStockTransferServiceKey = 'IStockTransferService';
 
 export interface IStockTransferService {
     createTransfer(
@@ -16,6 +17,6 @@ export interface IStockTransferService {
     approveTransfer(id: string): Promise<StockTransfer>;
     completeTransfer(id: string): Promise<StockTransfer>;
     cancelTransfer(id: string): Promise<StockTransfer>;
-    getAll(warehouseId?: string, status?: string): Promise<StockTransfer[]>;
+    getAll(filters?: { fromWarehouseId?: string, toWarehouseId?: string, status?: string, search?: string }, options?: IPaginationOptions): Promise<IPaginatedResult<StockTransfer>>;
     getById(id: string): Promise<StockTransfer | null>;
 }

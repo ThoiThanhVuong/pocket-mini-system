@@ -65,9 +65,26 @@ export class CustomerController {
 
     @Get()
     @RequirePermissions(PermissionCode.CUSTOMER_VIEW)
-    async findAll(@Query('search') search?: string, @Query('status') status?: string, @Query('customerType') customerType?: string) {
-        const customers = await this.customerService.getAllCustomers(search, status, customerType);
-        return customers.map(c => CustomerMapper.toResponse(c));
+    async findAll(
+        @Query('search') search?: string, 
+        @Query('status') status?: string, 
+        @Query('customerType') customerType?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10'
+    ) {
+        const paginatedResult = await this.customerService.getAllCustomers(
+            search, 
+            status, 
+            customerType, 
+            {
+                page: parseInt(page),
+                limit: parseInt(limit)
+            }
+        );
+        return {
+            items: paginatedResult.items.map(c => CustomerMapper.toResponse(c)),
+            meta: paginatedResult.meta
+        };
     }
 
     @Get(':id')

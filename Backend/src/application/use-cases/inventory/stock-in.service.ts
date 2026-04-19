@@ -12,6 +12,8 @@ import { IAuditServiceKey } from '../../../core/interfaces/services/system/audit
 import type { IAuditService } from '../../../core/interfaces/services/system/audit.service.interface';
 import { INoteServiceKey } from '../../../core/interfaces/services/system/note.service.interface';
 import type { INoteService } from '../../../core/interfaces/services/system/note.service.interface';
+import { IPaginatedResult } from '../../../shared/types/pagination.type';
+
 
 export const IStockInRepositoryKey = 'IStockInRepository';
 export const IStockRepositoryForStockInKey = 'IStockRepositoryForStockIn';
@@ -186,14 +188,14 @@ export class StockInService implements IStockInService {
         return stockIn;
     }
 
-    async getAll(warehouseId?: string, status?: string): Promise<StockIn[]> {
-        if (warehouseId && status) {
-            const list = await this.stockInRepo.findByWarehouse(warehouseId);
-            return list.filter(s => s.status === status);
-        }
-        if (warehouseId) return this.stockInRepo.findByWarehouse(warehouseId);
-        if (status) return this.stockInRepo.findByStatus(status);
-        return this.stockInRepo.findAll();
+    async getAll(filters?: { warehouseId?: string; status?: string; search?: string; supplierId?: string }, options?: { page?: number; limit?: number }): Promise<IPaginatedResult<StockIn>> {
+        const page = options?.page || 1;
+        const limit = options?.limit || 12;
+
+        return this.stockInRepo.findAllPaginated(
+            { page, limit },
+            filters
+        );
     }
 
     async getById(id: string): Promise<StockIn | null> {

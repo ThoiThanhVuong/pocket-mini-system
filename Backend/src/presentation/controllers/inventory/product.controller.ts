@@ -1,8 +1,10 @@
 import {
     Controller, Post, Get, Put, Delete, Patch,
-    Body, Param, Query, Inject, UseGuards, NotFoundException, Req,
+    Body, Param, Query, Inject, UseGuards, NotFoundException, Req, Res,
     UseInterceptors, UploadedFile, HttpException, HttpStatus
 } from '@nestjs/common';
+import { Response } from 'express';
+import type { Response as ExpressResponse } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ExcelService } from '../../../application/use-cases/system/excel.service';
@@ -80,19 +82,24 @@ export class ProductController {
         @Query('search') search?: string,
         @Query('isActive') isActive?: string,
         @Query('categoryId') categoryId?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
     ) {
         // Query param luôn là string → convert sang boolean nếu có
         const isActiveBool = isActive !== undefined
             ? isActive === 'true'
             : undefined;
 
-        const products = await this.productService.getAllProducts(search, isActiveBool, categoryId);
+        const paginatedProducts = await this.productService.getAllProducts(search, isActiveBool, categoryId, {
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
 
         const roleCodes = (req.user.roles || []).map((r: any) => (r.roleCode as string)?.toLowerCase());
         const isSystemAdmin = roleCodes.some(r => r === 'admin' || r === 'system_admin' || r?.includes('admin'));
         const userWarehouseIds = req.user.warehouseIds || [];
 
-        return await Promise.all(products.map(async p => {
+        const dtoItems = await Promise.all(paginatedProducts.items.map(async p => {
             const dto = ProductMapper.toResponse(p);
             if (!isSystemAdmin) {
                 if (userWarehouseIds.length === 0) {
@@ -106,6 +113,11 @@ export class ProductController {
             }
             return dto;
         }));
+
+        return {
+            items: dtoItems,
+            meta: paginatedProducts.meta
+        };
     }
 
     // GET /products/:id
@@ -153,5 +165,27 @@ export class ProductController {
     async remove(@Param('id') id: string) {
         await this.productService.deleteProduct(id);
         return { message: 'Xóa sản phẩm thành công' };
+    }
+
+    // GET /products/import-template
+    @Get('import-template')
+    @RequirePermissions(PermissionCode.PRODUCT_CREATE)
+    async getImportTemplate(@Res() res: ExpressResponse, @Inject(ExcelService) excelService: ExcelService) {
+        const headers = [
+            'Tên sản phẩm', 
+            'Mã SKU', 
+            'Giá', 
+            'Mô tả', 
+            'Mã danh mục', 
+            'Đơn vị', 
+            'Tồn kho tối thiểu'
+        ];
+        const buffer = await excelService.generateTemplate('Mẫu nhập sản phẩm', headers);
+        
+        res.set({
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="Mau-nhap-san-pham.xlsx"',
+        });
+        res.send(buffer);
     }
 }

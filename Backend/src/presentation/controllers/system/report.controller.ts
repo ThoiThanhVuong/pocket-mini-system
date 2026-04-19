@@ -100,4 +100,28 @@ export class ReportController {
         });
         res.send(buffer);
     }
+
+    @Get('revenue-by-customer')
+    async getRevenueByCustomer(@Query('period') period = 'month') {
+        const data = await this.reportService.getRevenueByCustomerReport(period as ReportPeriod);
+        return data;
+    }
+
+    @Get('revenue-by-customer/export')
+    async exportRevenueByCustomer(@Query('period') period = 'month', @Res() res: ExpressResponse) {
+        const data = await this.reportService.getRevenueByCustomerReport(period as ReportPeriod);
+        const columns = [
+            { header: 'ID Khách hàng', key: 'customerId', width: 35 },
+            { header: 'Tên Khách hàng', key: 'customerName', width: 30 },
+            { header: 'Tổng số đơn', key: 'totalOrders', width: 15 },
+            { header: 'Tổng doanh thu', key: 'totalRevenue', width: 25 },
+        ];
+        const buffer = await this.excelService.generateReport(`Doanh thu theo khách hàng - ${period}`, columns, data);
+        
+        res.set({
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': `attachment; filename="Doanh-thu-khach-hang-${period}.xlsx"`,
+        });
+        res.send(buffer);
+    }
 }

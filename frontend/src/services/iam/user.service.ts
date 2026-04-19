@@ -1,6 +1,6 @@
 import api from '@/lib/axios';
 import { CreateUserInput, UpdateUserInput, User } from '@/types/iam/user';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 
 export const UserService = {
@@ -9,8 +9,8 @@ export const UserService = {
     return response.data.data;
   },
 
-  async getAllUsers(params?: { search?: string; role?: string; status?: string }): Promise<User[]> {
-    const response = await api.get<ApiResponse<User[]>>(`/iam/users`, { params });
+  async getAllUsers(params?: { search?: string; role?: string; status?: string; page?: number; limit?: number }): Promise<PaginatedResult<User>> {
+    const response = await api.get<ApiResponse<PaginatedResult<User>>>(`/iam/users`, { params });
     return response.data.data;
   },
 

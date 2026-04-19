@@ -36,9 +36,19 @@ export class CategoryController {
     // GET /categories?search=...
     @Get()
     @RequirePermissions(PermissionCode.CATEGORY_VIEW)
-    async findAll(@Query('search') search?: string) {
-        const categories = await this.categoryService.getAllCategories(search);
-        return categories.map(c => CategoryMapper.toResponse(c));
+    async findAll(
+        @Query('search') search?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
+    ) {
+        const paginatedCategories = await this.categoryService.getAllCategories(search, {
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        return {
+            items: paginatedCategories.items.map(c => CategoryMapper.toResponse(c)),
+            meta: paginatedCategories.meta
+        };
     }
 
     // GET /categories/:id

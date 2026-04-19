@@ -5,6 +5,7 @@ import { Supplier } from '../../../core/domain/entities/partners/supplier.entity
 import { CreateSupplierDto } from '../../dtos/partners/create-supplier.dto';
 import { SupplierMapper } from '../../mappers/supplier.mapper';
 import { Email } from '../../../core/domain/value-objects/email.value-object';
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
 
 @Injectable()
 export class SupplierService implements ISupplierService {
@@ -54,17 +55,12 @@ export class SupplierService implements ISupplierService {
         return await this.repo.findOneById(id);
     }
 
-    async getAllSuppliers(search?: string, status?: string): Promise<Supplier[]> {
-        return await this.repo.findAllWithFilters(search, status);
+    async getAllSuppliers(search?: string, status?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Supplier>> {
+        return await this.repo.findAllWithFilters(search, status, options);
     }
 
     async countSuppliers(search?: string, status?: string): Promise<number> {
-        // Assuming repository has count logic or we filter findAll.
-        // ISupplierRepository extends IBaseRepository which might not have countWithFilters.
-        // If not, we can fetch all and count. Not efficient but works for now if repository doesn't support count.
-        // Or we can add count method to repository interface.
-        // Let's check ISupplierRepository. It has findAllWithFilters.
-        const suppliers = await this.repo.findAllWithFilters(search, status);
-        return suppliers.length;
+        const suppliers = await this.repo.findAllWithFilters(search, status, { page: 1, limit: 1 });
+        return (suppliers as IPaginatedResult<Supplier>).meta.totalItems;
     }
 }

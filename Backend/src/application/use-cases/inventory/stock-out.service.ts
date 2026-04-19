@@ -9,7 +9,9 @@ import { IPaymentServiceKey } from '../../../core/interfaces/services/finance/pa
 import type { IPaymentService } from '../../../core/interfaces/services/finance/payment.service.interface';
 import { IAuditServiceKey } from '../../../core/interfaces/services/system/audit.service.interface';
 import type { IAuditService } from '../../../core/interfaces/services/system/audit.service.interface';
+import { IPaginatedResult } from '../../../shared/types/pagination.type';
 import { INoteServiceKey } from '../../../core/interfaces/services/system/note.service.interface';
+
 import type { INoteService } from '../../../core/interfaces/services/system/note.service.interface';
 
 export const IStockOutRepositoryKey = 'IStockOutRepository';
@@ -165,17 +167,21 @@ export class StockOutService implements IStockOutService {
         return stockOut;
     }
 
-    async getAll(warehouseId?: string, status?: string): Promise<StockOut[]> {
-        if (warehouseId && status) {
-            const list = await this.stockOutRepo.findByWarehouse(warehouseId);
-            return list.filter(s => s.status === status);
-        }
-        if (warehouseId) return this.stockOutRepo.findByWarehouse(warehouseId);
-        if (status) return this.stockOutRepo.findByStatus(status);
-        return this.stockOutRepo.findAll();
+    async getAll(filters?: { warehouseId?: string, status?: string, search?: string, customerId?: string }, options?: { page?: number, limit?: number }): Promise<IPaginatedResult<StockOut>> {
+        const page = options?.page || 1;
+        const limit = options?.limit || 12;
+
+        return this.stockOutRepo.findAllPaginated(
+            { page, limit },
+            filters
+        );
     }
 
     async getById(id: string): Promise<StockOut | null> {
         return this.stockOutRepo.findWithItems(id);
+    }
+
+    async getByCustomer(customerId: string): Promise<StockOut[]> {
+        return this.stockOutRepo.findByCustomer(customerId);
     }
 }

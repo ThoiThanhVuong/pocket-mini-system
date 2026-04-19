@@ -1,10 +1,10 @@
 import api from '@/lib/axios';
 import { Category, CreateCategoryDto, UpdateCategoryDto } from '@/types/inventory/category';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const CategoryService = {
-  async getAllCategories(params?: { search?: string }): Promise<Category[]> {
-    const response = await api.get<ApiResponse<Category[]>>('/categories', { params });
+  async getAllCategories(params?: { search?: string; page?: number; limit?: number }): Promise<PaginatedResult<Category>> {
+    const response = await api.get<ApiResponse<PaginatedResult<Category>>>('/categories', { params });
     return response.data.data;
   },
 

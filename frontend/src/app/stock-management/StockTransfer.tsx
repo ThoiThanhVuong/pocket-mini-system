@@ -39,32 +39,50 @@ export class StockTransfer extends Component<{}, StockTransferState> {
     this.loadInitialData();
   }
 
+  loadTransfers = async () => {
+    try {
+      const { search, filterFromWarehouseId, filterToWarehouseId, currentPage } = this.state as any;
+      const response = await StockTransferService.getAllStockTransfers({
+        search,
+        warehouseId: filterFromWarehouseId || filterToWarehouseId, // The API handles either one if provided as warehouseId, or we can update API to handle specific from/to
+        page: currentPage,
+        limit: 12
+      });
+
+      this.setState({ 
+        transfers: response.items || [],
+        totalItems: response.meta?.totalItems || 0
+      });
+    } catch (error) {
+      console.error('Failed to load transfers:', error);
+    }
+  };
+
   loadInitialData = async () => {
     try {
-      const [warehousesData, allWarehousesData, productsData, transfersData] = await Promise.all([
-        WarehouseService.getAllWarehouses(false),
-        WarehouseService.getAllWarehouses(true),
-        ProductService.getAllProducts(),
-        StockTransferService.getAllStockTransfers()
+      const [warehousesData, allWarehousesData, productsData] = await Promise.all([
+        WarehouseService.getAllWarehouses({ all: false }),
+        WarehouseService.getAllWarehouses({ all: true }),
+        ProductService.getAllProducts()
       ]);
       
       const user = useAuthStore.getState().user;
       const roles = (user?.roles || []).map(r => String(r).toUpperCase());
       const isAdmin = roles.includes('ADMIN') || roles.includes('SYSTEM_ADMIN');
       
-      let filteredWarehouses = warehousesData || [];
+      let filteredWarehouses = warehousesData.items || [];
       if (!isAdmin && user?.warehouseIds && user.warehouseIds.length > 0) {
         filteredWarehouses = filteredWarehouses.filter((w: any) => user.warehouseIds!.includes(w.id));
       }
 
       this.setState({ 
-        allWarehouses: allWarehousesData || [],
+        allWarehouses: allWarehousesData.items || [],
         warehouses: filteredWarehouses, 
-        products: productsData || [], 
-        transfers: transfersData || [],
+        products: productsData.items || [], 
         fromWarehouse: filteredWarehouses.length === 1 ? filteredWarehouses[0].id : ''
       }, () => {
         if (this.state.fromWarehouse) this.recalculateAllStocks();
+        this.loadTransfers();
       });
     } catch (error) {
       console.error('Failed to load initial data:', error);
@@ -485,7 +503,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
     }
   };
   renderTransferHistory = () => {
-    const { transfers, warehouses, products } = this.state;
+    const { transfers, warehouses, products, totalItems } = this.state;
     const search: string = (this.state as any).search || '';
     const filterFromWarehouseId: string = (this.state as any).filterFromWarehouseId || '';
     const filterToWarehouseId: string = (this.state as any).filterToWarehouseId || '';
@@ -499,16 +517,8 @@ export class StockTransfer extends Component<{}, StockTransferState> {
       CANCELLED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     };
 
-    const filtered = transfers.filter((transfer: any) => {
-      const matchSearch = !search ||
-        (transfer.referenceCode || '').toLowerCase().includes(search.toLowerCase());
-      const matchFrom = !filterFromWarehouseId || transfer.fromWarehouseId === filterFromWarehouseId;
-      const matchTo = !filterToWarehouseId || transfer.toWarehouseId === filterToWarehouseId;
-      return matchSearch && matchFrom && matchTo;
-    });
+    const paged = transfers;
 
-    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-    const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
     return (
       <div className="mt-8">
@@ -522,12 +532,12 @@ export class StockTransfer extends Component<{}, StockTransferState> {
             type="text"
             placeholder="Tìm mã phiếu..."
             value={search}
-            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ search: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
             className="flex-1 min-w-[200px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           />
           <select
             value={filterFromWarehouseId}
-            onChange={e => this.setState({ filterFromWarehouseId: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ filterFromWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho xuất</option>
@@ -535,7 +545,7 @@ export class StockTransfer extends Component<{}, StockTransferState> {
           </select>
           <select
             value={filterToWarehouseId}
-            onChange={e => this.setState({ filterToWarehouseId: e.target.value, currentPage: 1 } as any)}
+            onChange={e => this.setState({ filterToWarehouseId: e.target.value, currentPage: 1 } as any, () => this.loadTransfers())}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
           >
             <option value="">Tất cả kho nhập</option>
@@ -623,27 +633,28 @@ export class StockTransfer extends Component<{}, StockTransferState> {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {totalItems > 12 && (
           <div className="flex items-center justify-between mt-4 text-sm text-gray-600 dark:text-gray-400">
-            <span>Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} / {filtered.length} phiếu</span>
+            <span>Hiển thị {Math.min((currentPage - 1) * 12 + 1, totalItems)}–{Math.min(currentPage * 12, totalItems)} / {totalItems} phiếu</span>
             <div className="flex gap-1">
-              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any)}
+              <button disabled={currentPage === 1} onClick={() => this.setState({ currentPage: currentPage - 1 } as any, () => this.loadTransfers())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ‹
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} onClick={() => this.setState({ currentPage: p } as any)}
+              {Array.from({ length: Math.ceil(totalItems / 12) }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={() => this.setState({ currentPage: p } as any, () => this.loadTransfers())}
                   className={`px-3 py-1 rounded border ${p === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                   {p}
                 </button>
               ))}
-              <button disabled={currentPage === totalPages} onClick={() => this.setState({ currentPage: currentPage + 1 } as any)}
+              <button disabled={currentPage === Math.ceil(totalItems / 12)} onClick={() => this.setState({ currentPage: currentPage + 1 } as any, () => this.loadTransfers())}
                 className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-gray-700">
                 ›
               </button>
             </div>
           </div>
         )}
+
 
         {/* Detail Modal */}
         {(this.state as any).selectedViewId && (

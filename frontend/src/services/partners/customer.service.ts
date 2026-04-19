@@ -1,10 +1,10 @@
 import api from '@/lib/axios';
 import { Customer } from '@/types/partners/customer';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const CustomerService = {
-  async getAllCustomers(params?: { search?: string; status?: string; customerType?: string }): Promise<Customer[]> {
-    const response = await api.get<ApiResponse<Customer[]>>(`/customers`, { params });
+  async getAllCustomers(params?: { search?: string; status?: string; customerType?: string; page?: number; limit?: number }): Promise<PaginatedResult<Customer>> {
+    const response = await api.get<ApiResponse<PaginatedResult<Customer>>>(`/customers`, { params });
     return response.data.data;
   },
 
@@ -25,5 +25,10 @@ export const CustomerService = {
 
   async deleteCustomer(id: string): Promise<void> {
     await api.delete(`/customers/${id}`);
+  },
+
+  async getCustomerHistory(id: string): Promise<any[]> {
+    const response = await api.get<ApiResponse<any[]>>(`/stock-out/customer/${id}`);
+    return response.data.data;
   },
 };

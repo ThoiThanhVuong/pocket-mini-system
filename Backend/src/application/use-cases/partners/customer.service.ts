@@ -6,8 +6,9 @@ import { PartnerStatus } from "../../../core/domain/enums/partners-status.enum";
 import { CustomerMapper } from "../../mappers/customer.mapper";
 import { CreateCustomerDto } from "../../dtos/partners/create-customer.dto";
 import { Email } from "../../../core/domain/value-objects/email.value-object";
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
 
-@Injectable()
+@Injectable()   
 export class CustomerService implements ICustomerService {
     constructor(
         @Inject('ICustomerRepository')
@@ -82,12 +83,12 @@ export class CustomerService implements ICustomerService {
         return await this.repo.findOneById(id);
     }
 
-    async getAllCustomers(search?: string, status?: string, customerType?: string): Promise<Customer[]> {
-        return await this.repo.findAllWithFilters(search, status, customerType);
+    async getAllCustomers(search?: string, status?: string, customerType?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Customer>> {
+        return await this.repo.findAllWithFilters(search, status, customerType, options);
     }
 
     async countCustomers(search?: string, status?: string, customerType?: string): Promise<number> {
-        const customers = await this.repo.findAllWithFilters(search, status, customerType);
-        return customers.length;
+        const response = await this.repo.findAllWithFilters(search, status, customerType, { page: 1, limit: 1 });
+        return response.meta.totalItems;
     }
 }

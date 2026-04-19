@@ -41,18 +41,24 @@ export class WarehouseController {
 
     @Get()
     @RequirePermissions(PermissionCode.WAREHOUSE_VIEW)
-    async findAll(@Req() req: any, @Query('all') all?: string) {
+    async findAll(
+        @Req() req: any, 
+        @Query('all') all?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10',
+        @Query('search') search?: string,
+        @Query('status') status?: string,
+    ) {
         const roleCodes = (req.user.roles || []).map((r: any) => (r.roleCode as string)?.toLowerCase());
         const isSystemAdmin = roleCodes.some(r => r === 'admin' || r === 'system_admin' || r?.includes('admin'));
         const userWarehouseIds = req.user.warehouseIds || [];
 
-        let list = await this.warehouseService.getAllWarehouses();
-        
-        if (!isSystemAdmin && all !== 'true') {
-            list = list.filter(w => userWarehouseIds.includes(w.id));
-        }
+        const options = { page: parseInt(page), limit: parseInt(limit) };
+        const allowedIds = (!isSystemAdmin && all !== 'true') ? userWarehouseIds : undefined;
 
-        const result = await Promise.all(list.map(async w => {
+        const paginatedWarehouses = await this.warehouseService.getAllWarehouses(options, allowedIds, search, status);
+
+        const items = await Promise.all(paginatedWarehouses.items.map(async w => {
             const stockItems = await this.stockRepo.findByWarehouse(w.id);
             const currentStock = stockItems.reduce((sum, s) => sum + s.quantity, 0);
             return {
@@ -69,7 +75,11 @@ export class WarehouseController {
                 createdAt: w.createdAt
             };
         }));
-        return result;
+        
+        return {
+            items,
+            meta: paginatedWarehouses.meta
+        };
     }
 
     @Get(':id')

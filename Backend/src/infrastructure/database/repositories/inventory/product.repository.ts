@@ -5,6 +5,7 @@ import {Product as ProductDomain} from '../../../../core/domain/entities/warehou
 import { IProductRepository } from "../../../../core/interfaces/repositories/inventory/product.repository.interface";
 import { Repository } from "typeorm";
 import { DeepPartial } from "src/core/interfaces/repositories/base.repository.interface";
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 @Injectable()
 export class ProductRepository implements IProductRepository{
     constructor(
@@ -43,11 +44,11 @@ export class ProductRepository implements IProductRepository{
         const entity = await this.productRepo.findOne({where:{id}, relations: ['stock']});
         return entity?this.toDomain(entity):null;
     }
-    async findAllWithFilters(search?: string, isActive?: boolean, categoryId?: string): Promise<ProductDomain[]> {
+    async findAllWithFilters(search?: string, isActive?: boolean, categoryId?: string, options?: IPaginationOptions): Promise<IPaginatedResult<ProductDomain>> {
         const query = this.productRepo.createQueryBuilder('product')
             .leftJoinAndSelect('product.stock', 'stock');
         if(search){
-            query.andWhere('product.name ILIKE :search OR product.sku ILIKE :search',{search:`%${search}%`})
+            query.andWhere('(product.name ILIKE :search OR product.sku ILIKE :search)',{search:`%${search}%`})
         }
         if(isActive !==undefined){
             query.andWhere('product.isActive =:isActive',{isActive})
@@ -55,15 +56,63 @@ export class ProductRepository implements IProductRepository{
         if(categoryId){
             query.andWhere('product.categoryId =:categoryId',{categoryId})
         }
-        const entities = await query.getMany();
-        return entities.map(e=>{
-            try {
-                return this.toDomain(e);
-            } catch (error) {
-                console.warn(`Failed to convert product entity to domain: ${error}`);
-                return null;
+        
+        let totalItems = 0;
+        let entities: ProductEntity[] = [];
+
+        if (options) {
+            const page = options.page || 1;
+            const limit = options.limit || 10;
+            const skip = (page - 1) * limit;
+
+            query.skip(skip).take(limit);
+
+            if (options.sortBy) {
+                query.orderBy(`product.${options.sortBy}`, options.sortOrder || 'ASC');
+            } else {
+                query.orderBy('product.createdAt', 'DESC');
             }
-        }).filter(product=>product!==null) as ProductDomain[];
+
+            const [result, total] = await query.getManyAndCount();
+            entities = result;
+            totalItems = total;
+
+            const items = entities.map(e => {
+                try { return this.toDomain(e); } 
+                catch (error) { return null; }
+            }).filter(product => product !== null) as ProductDomain[];
+
+            return {
+                items,
+                meta: {
+                    totalItems,
+                    itemCount: items.length,
+                    itemsPerPage: limit,
+                    totalPages: Math.ceil(totalItems / limit),
+                    currentPage: page
+                }
+            };
+        } else {
+            const result = await query.getMany();
+            entities = result;
+            totalItems = result.length;
+
+            const items = entities.map(e => {
+                try { return this.toDomain(e); } 
+                catch (error) { return null; }
+            }).filter(product => product !== null) as ProductDomain[];
+
+            return {
+                items,
+                meta: {
+                    totalItems,
+                    itemCount: items.length,
+                    itemsPerPage: items.length || 10,
+                    totalPages: 1,
+                    currentPage: 1
+                }
+            };
+        }
     }
     async remove(data: ProductDomain): Promise<ProductDomain> {
         const entity = await this.productRepo.findOne({where:{id:data.id}});

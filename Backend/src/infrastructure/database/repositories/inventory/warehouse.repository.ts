@@ -6,6 +6,7 @@ import { Warehouse as WarehouseDomain } from '../../../../core/domain/entities/w
 import { IWarehouseRepository } from '../../../../core/interfaces/repositories/inventory/warehouse.repository.interface';
 import { DeepPartial } from '../../../../core/interfaces/repositories/base.repository.interface';
 import { v4 as uuidv4 } from 'uuid';
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 
 @Injectable()
 export class WarehouseRepository implements IWarehouseRepository {
@@ -51,6 +52,69 @@ export class WarehouseRepository implements IWarehouseRepository {
             .where('user.id = :userId', { userId })
             .getMany();
         return list.map(e => this.toDomain(e));
+    }
+
+    async findAllPaginated(options?: IPaginationOptions, allowedIds?: string[], search?: string, status?: string): Promise<IPaginatedResult<WarehouseDomain>> {
+        const query = this.repo.createQueryBuilder('warehouse');
+        
+        if (allowedIds && allowedIds.length > 0) {
+            query.where('warehouse.id IN (:...allowedIds)', { allowedIds });
+        } else if (allowedIds && allowedIds.length === 0) {
+            // User is not allowed any warehouses
+            return {
+                items: [],
+                meta: { totalItems: 0, itemCount: 0, itemsPerPage: options?.limit || 10, totalPages: 0, currentPage: options?.page || 1 }
+            };
+        }
+
+        if (search) {
+            query.andWhere('(LOWER(warehouse.name) LIKE LOWER(:search) OR LOWER(warehouse.location) LIKE LOWER(:search) OR LOWER(warehouse.city) LIKE LOWER(:search))', { search: `%${search}%` });
+        }
+
+        if (status) {
+            query.andWhere('warehouse.status = :status', { status });
+        }
+
+        if (options) {
+            if (options.sortBy) {
+                query.orderBy(`warehouse.${options.sortBy}`, options.sortOrder || 'ASC');
+            } else {
+                query.orderBy('warehouse.createdAt', 'DESC');
+            }
+            // Add search filtering if provided through options as hack, or better wait, I need to pass filters.
+            const page = options.page || 1;
+            const limit = options.limit || 10;
+            const skip = (page - 1) * limit;
+
+            query.skip(skip).take(limit);
+
+            const [entities, totalItems] = await query.getManyAndCount();
+            const items = entities.map(e => this.toDomain(e));
+
+            return {
+                items,
+                meta: {
+                    totalItems,
+                    itemCount: items.length,
+                    itemsPerPage: limit,
+                    totalPages: Math.ceil(totalItems / limit),
+                    currentPage: page
+                }
+            };
+        }
+
+        const entities = await query.getMany();
+        const items = entities.map(e => this.toDomain(e));
+        return {
+            items,
+            meta: {
+                totalItems: items.length,
+                itemCount: items.length,
+                itemsPerPage: items.length || 10,
+                totalPages: 1,
+                currentPage: 1
+            }
+        };
     }
 
     create(data: DeepPartial<WarehouseDomain>): WarehouseDomain { throw new Error('Not implemented'); }

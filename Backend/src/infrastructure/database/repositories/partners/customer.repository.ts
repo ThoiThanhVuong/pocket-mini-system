@@ -4,8 +4,9 @@ import { ICustomerRepository } from '../../../../core/interfaces/repositories/pa
 import { PartnerStatus } from 'src/core/domain/enums/partners-status.enum';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
-import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';    
 import { Email } from 'src/core/domain/value-objects/email.value-object';
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 @Injectable()
 export class CustomerRepository implements ICustomerRepository{
     constructor(
@@ -33,7 +34,7 @@ export class CustomerRepository implements ICustomerRepository{
         await this.customerRepo.save(entity);
         return customer;
     }
-    async findAllWithFilters(search?:string,status?:string,customerType?:string):Promise<CustomerDomain[]>{
+    async findAllWithFilters(search?:string,status?:string,customerType?:string, options?: IPaginationOptions):Promise<IPaginatedResult<CustomerDomain>>{
         const query = this.customerRepo.createQueryBuilder('customer')
             .leftJoin('customer.stockOuts', 'stockOut')
             .leftJoin('stockOut.stockOutItems', 'stockOutItem')
@@ -56,9 +57,36 @@ export class CustomerRepository implements ICustomerRepository{
             query.andWhere('customer.customer_type = :customerType', { customerType });
         }
 
+        // Count total items before applying pagination
+        const countQuery = this.customerRepo.createQueryBuilder('customer');
+        if(search){
+            countQuery.andWhere('(customer.name ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search)', { search: `%${search}%` });
+        }
+        if(status){
+            countQuery.andWhere('customer.status = :status', { status });
+        }
+        if(customerType){
+            countQuery.andWhere('customer.customer_type = :customerType', { customerType });
+        }
+        const totalItems = await countQuery.getCount();
+
+        if (options) {
+            const page = options.page || 1;
+            const limit = options.limit || 10;
+            const skip = (page - 1) * limit;
+
+            query.offset(skip).limit(limit);
+
+            if (options.sortBy) {
+                query.orderBy(`customer.${options.sortBy}`, options.sortOrder || 'ASC');
+            } else {
+                query.orderBy('customer.createdAt', 'DESC');
+            }
+        }
+
         const rawResults = await query.getRawMany();
         
-        return rawResults.map(raw => {
+        const items = rawResults.map(raw => {
             const domain = new CustomerDomain(
                 raw.customer_id,
                 raw.customer_name,
@@ -75,6 +103,20 @@ export class CustomerRepository implements ICustomerRepository{
             domain.totalSpent = parseFloat(raw.totalSpent || '0');
             return domain;
         });
+
+        const page = options?.page || 1;
+        const limit = options?.limit || items.length || 10;
+
+        return {
+            items,
+            meta: {
+                totalItems,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages: Math.ceil(totalItems / limit),
+                currentPage: page
+            }
+        };
     }
     async findOneById(id: any): Promise<CustomerDomain | null> {
         const query = this.customerRepo.createQueryBuilder('customer')
@@ -110,7 +152,7 @@ export class CustomerRepository implements ICustomerRepository{
         return domain;
     }
     async findAll():Promise<CustomerDomain[]>{
-        return this.findAllWithFilters();
+        return (await this.findAllWithFilters()).items;
     }
     async remove(data: CustomerDomain): Promise<CustomerDomain> {
         const entity = await this.customerRepo.findOne({ where: { id: data.id } });

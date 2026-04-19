@@ -76,8 +76,8 @@ export function UserModal({ isOpen, onClose, user, onSuccess }: UserModalProps) 
   const loadWarehouses = async () => {
     setIsLoadingWarehouses(true);
     try {
-      const data = await WarehouseService.getAllWarehouses();
-      setWarehouses(data);
+      const result = await WarehouseService.getAllWarehouses();
+      setWarehouses(result.items);
     } catch (error) {
       console.error('Error loading warehouses:', error);
     } finally {

@@ -11,6 +11,7 @@ import { PayrollEditModal } from "@/components/users/PayrollEditModal";
 import { SalarySlipModal } from "@/components/users/SalarySlipModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import AttendanceStats from "@/components/attendance/AttendanceStats";
+import { Pagination } from "@/components/common/Pagination";
 
 export default function SalaryTab() {
   const [payrolls, setPayrolls] = useState<any[]>([]);
@@ -24,18 +25,24 @@ export default function SalaryTab() {
   const [printingPayroll, setPrintingPayroll] = useState<any>(null);
   const [viewingUser, setViewingUser] = useState<string | null>(null);
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
   useEffect(() => {
     fetchData();
-  }, [month, year]);
+  }, [month, year, currentPage]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersData, payrollsData] = await Promise.all([
-        UserService.getAllUsers(),
+      const [usersResult, payrollsData] = await Promise.all([
+        UserService.getAllUsers({ page: currentPage, limit: pageSize }),
         payrollService.getMonthlyList(month, year)
       ]);
-      setUsers(usersData);
+      setUsers(usersResult.items);
+      setTotalItems(usersResult.meta.totalItems);
       setPayrolls(payrollsData);
     } catch (error) {
       toast.error("Failed to fetch data");
@@ -201,6 +208,18 @@ export default function SalaryTab() {
               )}
             </TableBody>
           </Table>
+          <Pagination 
+            totalItems={totalItems}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            labelShowing="Đang hiển thị"
+            labelTo="đến"
+            labelOf="trong"
+            labelResults="nhân viên"
+            labelPrevious="Trước"
+            labelNext="Sau"
+          />
         </CardContent>
       </Card>
 

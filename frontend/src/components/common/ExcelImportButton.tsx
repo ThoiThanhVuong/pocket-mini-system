@@ -10,16 +10,39 @@ interface ExcelImportButtonProps {
   onSuccess: () => void;
   buttonText?: string;
   permission?: string;
+  templateEndpoint?: string;
 }
 
 export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({ 
   endpoint, 
   onSuccess,
   buttonText = 'Nhập Excel',
-  permission
+  permission,
+  templateEndpoint
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+
+  const handleDownloadTemplate = async () => {
+    if (!templateEndpoint) return;
+    setIsDownloadingTemplate(true);
+    try {
+      const response = await api.get(templateEndpoint, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Mau-nhap-du-lieu.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error('Không thể tải file mẫu');
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,6 +86,23 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
     </motion.button>
   );
 
+  const templateLink = templateEndpoint && (
+    <button 
+      onClick={handleDownloadTemplate}
+      disabled={isDownloadingTemplate}
+      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mt-1 underline block w-full text-center disabled:opacity-50"
+    >
+      {isDownloadingTemplate ? 'Đang tải...' : 'Tải file mẫu'}
+    </button>
+  );
+
+  const buttonWithTemplate = (
+    <div className="flex flex-col items-center">
+      {buttonContent}
+      {templateLink}
+    </div>
+  );
+
   const inputRender = (
     <input 
       type="file" 
@@ -77,7 +117,7 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
     return (
       <Can permission={permission}>
         {inputRender}
-        {buttonContent}
+        {buttonWithTemplate}
       </Can>
     );
   }
@@ -85,7 +125,7 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
   return (
     <>
       {inputRender}
-      {buttonContent}
+      {buttonWithTemplate}
     </>
   );
 };

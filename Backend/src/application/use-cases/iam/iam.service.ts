@@ -16,6 +16,7 @@ import { UserStatus } from '../../../core/domain/enums/user-status.enum';
 import { Email } from 'src/core/domain/value-objects/email.value-object';
 import { UserMapper } from '../../mappers/user.mapper';
 import { UserSalaryHistory } from '../../../infrastructure/database/entities/iam/user-salary-history.entity';
+import { IPaginationOptions, IPaginatedResult } from "../../../shared/types/pagination.type";
 
 @Injectable()
 export class IamService implements IIamService{
@@ -210,8 +211,8 @@ export class IamService implements IIamService{
         return await this.userRepo.save(newUser);
     }
 
-    async getAllUsers(search?: string, role?: string, status?: string): Promise<User[]> {
-        return await this.userRepo.findAllWithFilters(search, role, status);
+    async getAllUsers(search?: string, role?: string, status?: string, options?: IPaginationOptions): Promise<IPaginatedResult<User>> {
+        return await this.userRepo.findAllWithFilters(search, role, status, options);
     }
 
     async getUserById(userId: string): Promise<User> {

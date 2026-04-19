@@ -86,4 +86,35 @@ export class ExcelService {
 
         return data;
     }
+
+    async generateTemplate(sheetName: string, headers: string[]): Promise<Buffer> {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet(sheetName);
+
+        // Add headers at row 1
+        const headerRow = worksheet.addRow(headers);
+        headerRow.eachCell((cell) => {
+            cell.font = { bold: true };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE0E0E0' }
+            };
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+
+        // Set default column width
+        worksheet.columns = headers.map(() => ({ width: 20 }));
+
+        const arrayBuffer = await workbook.xlsx.writeBuffer();
+        if (Buffer.isBuffer(arrayBuffer)) {
+            return arrayBuffer;
+        }
+        return Buffer.from(arrayBuffer);
+    }
 }

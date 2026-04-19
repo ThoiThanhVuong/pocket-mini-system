@@ -1,10 +1,16 @@
 import api from '@/lib/axios';
 import { StockIn, CreateStockInDto } from '@/types/inventory/stock-in';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const StockInService = {
-  async getAllStockIns(params?: { warehouseId?: string; status?: string }): Promise<StockIn[]> {
-    const response = await api.get<ApiResponse<StockIn[]>>('/stock-in', { params });
+  async getAllStockIns(params?: { 
+    warehouseId?: string; 
+    status?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<PaginatedResult<StockIn>> {
+    const response = await api.get<ApiResponse<PaginatedResult<StockIn>>>('/stock-in', { params });
     return response.data.data;
   },
 

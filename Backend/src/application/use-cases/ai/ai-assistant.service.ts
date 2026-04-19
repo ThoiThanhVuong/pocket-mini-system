@@ -235,7 +235,7 @@ export class AiAssistantService implements IAiAssistantService {
 
       // Tồn kho chi tiết
       context += `TỒN KHO CHI TIẾT (Theo Sản phẩm & Kho):\n`;
-      const stockLines = (allProducts || []).map(p => {
+      const stockLines = (allProducts.items || []).map(p => {
         const productStocks = allStock?.filter(st => st.productId === p.id) || [];
         if (productStocks.length === 0) {
           return `- ${p.name}: 0 cái (Chưa có trong kho)`;
@@ -267,8 +267,8 @@ export class AiAssistantService implements IAiAssistantService {
     if (name === 'create_stock_in_slip') {
       const { items, supplierName, warehouseName } = args;
       const suppliers = await this.supplierService.getAllSuppliers(supplierName);
-      if (!suppliers || suppliers.length === 0) throw new Error(`Không tìm thấy nhà cung cấp nào tên "${supplierName}".`);
-      const supplier = suppliers[0];
+      if (!suppliers || suppliers.items.length === 0) throw new Error(`Không tìm thấy nhà cung cấp nào tên "${supplierName}".`);
+      const supplier = suppliers.items[0];
       const warehouse = await this.getWarehouseByName(userId, warehouseName);
       const slipItems = await this.resolveItems(items);
       const referenceCode = `AI-IN-${this.genId()}`;
@@ -280,8 +280,8 @@ export class AiAssistantService implements IAiAssistantService {
     if (name === 'create_stock_out_slip') {
       const { items, customerName, warehouseName } = args;
       const customers = await this.customerService.getAllCustomers(customerName);
-      if (!customers || customers.length === 0) throw new Error(`Không tìm thấy khách hàng nào tên "${customerName}".`);
-      const customer = customers[0];
+      if (!customers || customers.items.length === 0) throw new Error(`Không tìm thấy khách hàng nào tên "${customerName}".`);
+      const customer = customers.items[0];
       const warehouse = await this.getWarehouseByName(userId, warehouseName);
       const slipItems = await this.resolveItems(items);
       const referenceCode = `AI-OUT-${this.genId()}`;
@@ -358,17 +358,17 @@ export class AiAssistantService implements IAiAssistantService {
       const fuzzySearch = searchTerm.replace(/\s+/g, '%');
       let products = await this.productRepo.findAllWithFilters(fuzzySearch);
       
-      if (!products || products.length === 0) {
+      if (!products || products.items.length === 0) {
         // Fallback: Tìm theo từ cuối cùng (thường là danh từ chính)
         const lastWord = words[words.length - 1];
         products = await this.productRepo.findAllWithFilters(lastWord);
       }
       
-      if (!products || products.length === 0) {
+      if (!products || products.items.length === 0) {
         throw new Error(`Dạ sếp ơi, em không tìm thấy sản phẩm nào tên là "${item.productName}" trong danh mục ạ.`);
       }
       
-      const product = products[0];
+      const product = products.items[0];
       resolved.push({
         productId: product.id,
         productName: product.name,

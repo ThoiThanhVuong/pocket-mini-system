@@ -62,9 +62,17 @@ export interface CustomersReport {
     byMonth: CustomersByMonthItem[];
 }
 
+export interface CustomerRevenueItem {
+    customerId: string;
+    customerName: string;
+    totalOrders: number;
+    totalRevenue: number;
+}
+
 // ─── Service Interface ─────────────────────────────────────────────────────────
 export interface IReportService {
     getSalesReport(period: ReportPeriod): Promise<SalesReport>;
     getInventoryReport(): Promise<InventoryReport>;
     getCustomersReport(period: ReportPeriod): Promise<CustomersReport>;
+    getRevenueByCustomerReport(period: ReportPeriod): Promise<CustomerRevenueItem[]>;
 }

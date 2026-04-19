@@ -60,8 +60,8 @@ export class ProductModal extends Component<ProductModalProps, ProductModalState
   loadCategories = async () => {
     try {
       this.setState({ isLoadingCategories: true });
-      const categories = await CategoryService.getAllCategories();
-      this.setState({ categories, isLoadingCategories: false });
+      const categoriesResult = await CategoryService.getAllCategories();
+      this.setState({ categories: categoriesResult.items, isLoadingCategories: false });
     } catch (error) {
       console.error('Failed to load categories:', error);
       this.setState({ isLoadingCategories: false });

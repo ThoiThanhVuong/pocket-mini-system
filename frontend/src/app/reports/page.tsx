@@ -10,7 +10,7 @@ import {
 import { PageHeader } from '@/components/common/PageHeader';
 import {
   ReportService, ReportPeriod,
-  SalesReport, InventoryReport, CustomersReport, ProfitReport
+  SalesReport, InventoryReport, CustomersReport, ProfitReport, CustomerRevenueItem
 } from '@/services/system/report.service';
 import { toast } from 'sonner';
 
@@ -34,6 +34,7 @@ const TABS = [
   { id: 'sales',     label: 'Báo cáo Xuất kho' },
   { id: 'inventory', label: 'Báo cáo Tồn kho' },
   { id: 'customers', label: 'Báo cáo Khách hàng' },
+  { id: 'customerRevenue', label: 'Doanh thu Khách hàng' },
 ];
 const DATE_RANGES: { id: ReportPeriod; label: string }[] = [
   { id: 'week',    label: 'Tuần này' },
@@ -239,7 +240,61 @@ function CustomersReportView({ data }: { data: CustomersReport }) {
   );
 }
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Customer Revenue Report ────────────────────────────────────────────────
+function CustomerRevenueReportView({ data }: { data: CustomerRevenueItem[] }) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <KpiCard title="Khách hàng phát sinh giao dịch" value={String(data.length)} subtext="Trong thời gian đã chọn"
+          icon={<Users className="text-blue-600" size={22} />} />
+        <KpiCard title="Tổng doanh thu khách hàng" value={fmtCurrency(data.reduce((sum, item) => sum + item.totalRevenue, 0))} subtext="Giá trị đơn hàng hoàn thành/đã duyệt" color="emerald"
+          icon={<TrendingUp className="text-emerald-600" size={22} />} />
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white">Chi tiết doanh thu theo khách hàng</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700/50 dark:text-gray-400">
+              <tr>
+                <th className="px-6 py-3 font-medium">Khách hàng</th>
+                <th className="px-6 py-3 font-medium text-right">Số đơn</th>
+                <th className="px-6 py-3 font-medium text-right">Doanh thu</th>
+                <th className="px-6 py-3 font-medium text-right">Trung bình/Đơn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item, idx) => (
+                <motion.tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30"
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
+                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{item.customerName || 'Khách lẻ'}</td>
+                  <td className="px-6 py-4 text-right">{item.totalOrders}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                    {fmtCurrency(item.totalRevenue)}
+                  </td>
+                  <td className="px-6 py-4 text-right text-gray-500">
+                    {item.totalOrders > 0 ? fmtCurrency(item.totalRevenue / item.totalOrders) : '-'}
+                  </td>
+                </motion.tr>
+              ))}
+              {data.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-gray-500">
+                    Không có thống kê trong thời gian này
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<string>('profit');
   const [period, setPeriod] = useState<ReportPeriod>('month');
@@ -249,6 +304,7 @@ export default function ReportsPage() {
   const [salesData, setSalesData] = useState<SalesReport | null>(null);
   const [inventoryData, setInventoryData] = useState<InventoryReport | null>(null);
   const [customersData, setCustomersData] = useState<CustomersReport | null>(null);
+  const [customerRevenueData, setCustomerRevenueData] = useState<CustomerRevenueItem[] | null>(null);
 
   const fetchData = useCallback(async (tab: string, p: ReportPeriod) => {
     setIsLoading(true);
@@ -261,6 +317,8 @@ export default function ReportsPage() {
         setInventoryData(await ReportService.getInventoryReport());
       } else if (tab === 'customers') {
         setCustomersData(await ReportService.getCustomersReport(p));
+      } else if (tab === 'customerRevenue') {
+        setCustomerRevenueData(await ReportService.getRevenueByCustomerReport(p));
       }
     } catch (err) {
       console.error('Failed to load report', err);
@@ -280,6 +338,8 @@ export default function ReportsPage() {
       } else if (activeTab === 'inventory') {
         blob = await ReportService.exportInventoryReport();
         filename = 'Bao-cao-ton-kho.xlsx';
+      } else if (activeTab === 'customerRevenue') {
+        blob = await ReportService.exportRevenueByCustomer(period);
       } else {
         blob = await ReportService.exportCustomersReport(period);
       }
@@ -310,6 +370,7 @@ export default function ReportsPage() {
     if (activeTab === 'sales' && salesData) return <SalesReportView data={salesData} />;
     if (activeTab === 'inventory' && inventoryData) return <InventoryReportView data={inventoryData} />;
     if (activeTab === 'customers' && customersData) return <CustomersReportView data={customersData} />;
+    if (activeTab === 'customerRevenue' && customerRevenueData) return <CustomerRevenueReportView data={customerRevenueData} />;
     return null;
   };
 

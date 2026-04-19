@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import { motion } from 'framer-motion';
-import { Edit, Trash2, User, Mail, Phone, Loader2 } from 'lucide-react';
+import { Edit, Trash2, User, Mail, Phone, Loader2, History } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { PageHeader } from '@/components/common/PageHeader';
 import { TableToolbar } from '@/components/common/TableToolbar';
@@ -19,6 +19,10 @@ const CustomerModal = dynamic(() => import('./CustomerModal').then(mod => mod.Cu
   ssr: false
 });
 
+const CustomerHistoryModal = dynamic(() => import('./CustomerHistoryModal').then(mod => mod.CustomerHistoryModal), {
+  ssr: false
+});
+
 interface CustomersState {
   customers: Customer[];
   isModalOpen: boolean;
@@ -29,6 +33,11 @@ interface CustomersState {
     customerType: string;
     status: string;
   };
+  isHistoryModalOpen: boolean;
+  selectedCustomerForHistory: Customer | null;
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 export default class CustomersPage extends Component<{}, CustomersState> {
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -41,6 +50,11 @@ export default class CustomersPage extends Component<{}, CustomersState> {
       selectedCustomer: null,
       isLoading: true,
       filters: { search: '', customerType: '', status: '' },
+      isHistoryModalOpen: false,
+      selectedCustomerForHistory: null,
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
     };
   }
 
@@ -56,12 +70,15 @@ export default class CustomersPage extends Component<{}, CustomersState> {
     try {
       this.setState({ isLoading: true });
       const { search, customerType, status } = this.state.filters;
-      const customers = await CustomerService.getAllCustomers({ 
+      const { currentPage, pageSize } = this.state;
+      const response = await CustomerService.getAllCustomers({ 
         search, 
         customerType, 
-        status 
+        status,
+        page: currentPage,
+        limit: pageSize
       });
-      this.setState({ customers });
+      this.setState({ customers: response.items, totalItems: response.meta.totalItems });
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       toast.error('Không thể tải danh sách khách hàng');
@@ -72,15 +89,19 @@ export default class CustomersPage extends Component<{}, CustomersState> {
 
   handleFilterChange = (key: keyof CustomersState['filters'], value: string) => {
     this.setState(
-      (prev) => ({ filters: { ...prev.filters, [key]: value } }),
+      (prev) => ({ filters: { ...prev.filters, [key]: value }, currentPage: 1 }),
       () => { if (key !== 'search') this.fetchCustomers(); }
     );
   };
 
   handleSearchChange = (value: string) => {
-    this.setState((prev) => ({ filters: { ...prev.filters, search: value } }));
+    this.setState((prev) => ({ filters: { ...prev.filters, search: value }, currentPage: 1 }));
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => this.fetchCustomers(), 500);
+  };
+
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => this.fetchCustomers());
   };
 
   openModal = (customer: Customer | null = null) => {
@@ -89,6 +110,14 @@ export default class CustomersPage extends Component<{}, CustomersState> {
 
   closeModal = () => {
     this.setState({ isModalOpen: false, selectedCustomer: null });
+  };
+
+  openHistoryModal = (customer: Customer) => {
+    this.setState({ isHistoryModalOpen: true, selectedCustomerForHistory: customer });
+  };
+
+  closeHistoryModal = () => {
+    this.setState({ isHistoryModalOpen: false, selectedCustomerForHistory: null });
   };
 
   formatCurrency = (amount: number) =>
@@ -134,7 +163,8 @@ export default class CustomersPage extends Component<{}, CustomersState> {
   };
 
   render() {
-    const { customers, isModalOpen, selectedCustomer, isLoading, filters } = this.state;
+    const { customers, totalItems, isModalOpen, selectedCustomer, isLoading, filters, currentPage, pageSize } = this.state;
+    
 
     if (isLoading && customers.length === 0) {
       return (
@@ -278,13 +308,24 @@ export default class CustomersPage extends Component<{}, CustomersState> {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <ActionGuard permission="customer.update">
-                        <motion.button
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-3"
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => this.openModal(customer)}>
-                          <Edit size={16} />
-                        </motion.button>
+                        <>
+                          <motion.button
+                          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 mr-3"
+                          whileHover={{ scale: 1.2 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => this.openHistoryModal(customer)}
+                          title="Lịch sử mua hàng">
+                            <History size={16} />
+                          </motion.button>
+                          <motion.button
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-3"
+                          whileHover={{ scale: 1.2 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => this.openModal(customer)}
+                          title="Chỉnh sửa">
+                            <Edit size={16} />
+                          </motion.button>
+                        </>
                       </ActionGuard>
                       <ActionGuard permission="customer.delete">
                         <motion.button
@@ -301,8 +342,18 @@ export default class CustomersPage extends Component<{}, CustomersState> {
               </tbody>
             </table>
           </div>
-
-          <Pagination totalItems={customers.length} />
+          <Pagination 
+            totalItems={totalItems} 
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={this.handlePageChange}
+            labelShowing="Đang hiển thị"
+            labelTo="đến"
+            labelOf="trong"
+            labelResults="khách hàng"
+            labelPrevious="Trước"
+            labelNext="Sau"
+          />
         </div>
 
         {isModalOpen &&
@@ -311,6 +362,13 @@ export default class CustomersPage extends Component<{}, CustomersState> {
           onClose={this.closeModal}
           customer={selectedCustomer}
           onSave={this.handleSave} />
+        }
+
+        {this.state.isHistoryModalOpen &&
+        <CustomerHistoryModal
+          isOpen={this.state.isHistoryModalOpen}
+          onClose={this.closeHistoryModal}
+          customer={this.state.selectedCustomerForHistory} />
         }
       </div>);
   }

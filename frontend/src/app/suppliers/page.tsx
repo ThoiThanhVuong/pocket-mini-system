@@ -28,6 +28,9 @@ interface SuppliersState {
     search: string;
     status: string;
   };
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
 }
 
 export default class SuppliersPage extends Component<{}, SuppliersState> {
@@ -41,6 +44,9 @@ export default class SuppliersPage extends Component<{}, SuppliersState> {
       selectedSupplier: null,
       isLoading: true,
       filters: { search: '', status: '' },
+      currentPage: 1,
+      pageSize: 10,
+      totalItems: 0
     };
   }
 
@@ -56,8 +62,17 @@ export default class SuppliersPage extends Component<{}, SuppliersState> {
     try {
       this.setState({ isLoading: true });
       const { search, status } = this.state.filters;
-      const suppliers = await SupplierService.getAllSuppliers({ search, status });
-      this.setState({ suppliers });
+      const { currentPage, pageSize } = this.state;
+      const response = await SupplierService.getAllSuppliers({ 
+        search, 
+        status,
+        page: currentPage,
+        limit: pageSize
+      });
+      this.setState({ 
+        suppliers: response.items, 
+        totalItems: response.meta.totalItems 
+      });
     } catch (error) {
       console.error('Failed to fetch suppliers:', error);
       toast.error('Không thể tải danh sách nhà cung cấp');
@@ -68,15 +83,19 @@ export default class SuppliersPage extends Component<{}, SuppliersState> {
 
   handleFilterChange = (key: keyof SuppliersState['filters'], value: string) => {
     this.setState(
-      prevState => ({ filters: { ...prevState.filters, [key]: value } }),
+      prevState => ({ filters: { ...prevState.filters, [key]: value }, currentPage: 1 }),
       () => { if (key !== 'search') this.fetchSuppliers(); }
     );
   };
 
   handleSearchChange = (value: string) => {
-    this.setState((prev) => ({ filters: { ...prev.filters, search: value } }));
+    this.setState((prev) => ({ filters: { ...prev.filters, search: value }, currentPage: 1 }));
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => this.fetchSuppliers(), 500);
+  };
+
+  handlePageChange = (page: number) => {
+    this.setState({ currentPage: page }, () => this.fetchSuppliers());
   };
 
   openModal = (supplier: Supplier | null = null) => {
@@ -120,7 +139,8 @@ export default class SuppliersPage extends Component<{}, SuppliersState> {
 
 
   render() {
-    const { suppliers, isModalOpen, selectedSupplier, isLoading, filters } = this.state;
+    const { suppliers, totalItems, isModalOpen, selectedSupplier, isLoading, filters, currentPage, pageSize } = this.state;
+    
 
     if (isLoading && suppliers.length === 0) {
       return (
@@ -269,7 +289,18 @@ export default class SuppliersPage extends Component<{}, SuppliersState> {
             </table>
           </div>
 
-          <Pagination totalItems={suppliers.length} />
+          <Pagination 
+            totalItems={totalItems} 
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={this.handlePageChange}
+            labelShowing="Đang hiển thị"
+            labelTo="đến"
+            labelOf="trong"
+            labelResults="nhà cung cấp"
+            labelPrevious="Trước"
+            labelNext="Sau"
+          />
         </div>
 
         {isModalOpen && (

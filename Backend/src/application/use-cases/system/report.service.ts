@@ -3,7 +3,7 @@ import { IReportRepositoryKey } from '../../../core/interfaces/repositories/syst
 import type { IReportRepository } from '../../../core/interfaces/repositories/system/report.repository.interface';
 import type {
     IReportService, ReportPeriod,
-    SalesReport, InventoryReport, CustomersReport,
+    SalesReport, InventoryReport, CustomersReport, CustomerRevenueItem
 } from '../../../core/interfaces/services/system/report.service.interface';
 
 function periodInterval(period: ReportPeriod): string {
@@ -60,5 +60,10 @@ export class ReportService implements IReportService {
             this.reportRepo.getCustomersByMonth(months),
         ]);
         return { kpi, byMonth };
+    }
+
+    async getRevenueByCustomerReport(period: ReportPeriod): Promise<CustomerRevenueItem[]> {
+        const interval = periodInterval(period);
+        return this.reportRepo.getRevenueByCustomer(interval);
     }
 }

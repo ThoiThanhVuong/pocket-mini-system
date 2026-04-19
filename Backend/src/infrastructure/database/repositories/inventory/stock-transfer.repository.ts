@@ -70,6 +70,55 @@ export class StockTransferRepository implements IStockTransferRepository {
         return domain;
     }
 
+    async findAllPaginated(
+        options: { page: number; limit: number; sortBy?: string; sortOrder?: 'ASC' | 'DESC' },
+        filters?: { fromWarehouseId?: string; toWarehouseId?: string; status?: string; search?: string }
+    ): Promise<{ items: StockTransferDomain[]; meta: any }> {
+        const { page, limit, sortBy = 'createdAt', sortOrder = 'DESC' } = options;
+        const query = this.repo.createQueryBuilder('stock_transfer')
+            .leftJoinAndSelect('stock_transfer.fromWarehouse', 'fromWarehouse')
+            .leftJoinAndSelect('stock_transfer.toWarehouse', 'toWarehouse')
+            .leftJoinAndSelect('stock_transfer.user', 'user')
+            .leftJoinAndSelect('stock_transfer.stockTransferItems', 'items')
+            .leftJoinAndSelect('items.product', 'product');
+
+        if (filters?.fromWarehouseId) {
+            query.andWhere('stock_transfer.from_warehouse = :fromWarehouseId', { fromWarehouseId: filters.fromWarehouseId });
+        }
+
+        if (filters?.toWarehouseId) {
+            query.andWhere('stock_transfer.to_warehouse = :toWarehouseId', { toWarehouseId: filters.toWarehouseId });
+        }
+
+        if (filters?.status) {
+            query.andWhere('stock_transfer.status = :status', { status: filters.status });
+        }
+
+        if (filters?.search) {
+            query.andWhere('stock_transfer.reference_code ILIKE :search', { search: `%${filters.search}%` });
+        }
+
+        const [entities, total] = await query
+            .orderBy(`stock_transfer.${sortBy}`, sortOrder)
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getManyAndCount();
+
+        const items = entities.map(e => this.toDomain(e));
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items,
+            meta: {
+                totalItems: total,
+                itemCount: items.length,
+                itemsPerPage: limit,
+                totalPages,
+                currentPage: page,
+            }
+        };
+    }
+
     async saveNew(
         id: string, fromWarehouseId: string, toWarehouseId: string,
         userId: string, referenceCode: string, status: string,

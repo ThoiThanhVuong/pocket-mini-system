@@ -5,6 +5,7 @@ import { Category as CategoryEntity } from '../../entities/warehouse/category.en
 import { Category as CategoryDomain } from '../../../../core/domain/entities/warehouse/category.entity';
 import { ICategoryRepository } from '../../../../core/interfaces/repositories/inventory/category.repository.interface';
 import { DeepPartial } from '../../../../core/interfaces/repositories/base.repository.interface';
+import { IPaginationOptions, IPaginatedResult } from "../../../../shared/types/pagination.type";
 
 @Injectable()
 export class CategoryRepository implements ICategoryRepository {
@@ -66,11 +67,53 @@ export class CategoryRepository implements ICategoryRepository {
 
     // ── ICategoryRepository extras ───────────────────────────────────
 
-    async findAllWithSearch(search?: string): Promise<CategoryDomain[]> {
-        const entities = search
-            ? await this.repo.find({ where: { name: ILike(`%${search}%`) } })
-            : await this.repo.find();
-        return entities.map(e => this.toDomain(e));
+    async findAllWithSearch(search?: string, options?: IPaginationOptions): Promise<IPaginatedResult<CategoryDomain>> {
+        const query = this.repo.createQueryBuilder('category');
+
+        if (search) {
+            query.andWhere('category.name ILIKE :search', { search: `%${search}%` });
+        }
+
+        if (options) {
+            const page = options.page || 1;
+            const limit = options.limit || 10;
+            const skip = (page - 1) * limit;
+
+            query.skip(skip).take(limit);
+
+            if (options.sortBy) {
+                query.orderBy(`category.${options.sortBy}`, options.sortOrder || 'ASC');
+            } else {
+                query.orderBy('category.createdAt', 'DESC');
+            }
+
+            const [entities, totalItems] = await query.getManyAndCount();
+            const items = entities.map(e => this.toDomain(e));
+
+            return {
+                items,
+                meta: {
+                    totalItems,
+                    itemCount: items.length,
+                    itemsPerPage: limit,
+                    totalPages: Math.ceil(totalItems / limit),
+                    currentPage: page
+                }
+            };
+        } else {
+            const entities = await query.getMany();
+            const items = entities.map(e => this.toDomain(e));
+            return {
+                items,
+                meta: {
+                    totalItems: items.length,
+                    itemCount: items.length,
+                    itemsPerPage: items.length || 10,
+                    totalPages: 1,
+                    currentPage: 1
+                }
+            };
+        }
     }
 
     async findByParentId(parentId: string): Promise<CategoryDomain[]> {

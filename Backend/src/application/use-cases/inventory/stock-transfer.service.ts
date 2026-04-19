@@ -7,6 +7,8 @@ import type { IStockRepository } from '../../../core/interfaces/repositories/inv
 import { IStockTransferService, StockTransferItemInput } from '../../../core/interfaces/services/inventory/stock-transfer.service.interface';
 import { IAuditServiceKey } from '../../../core/interfaces/services/system/audit.service.interface';
 import type { IAuditService } from '../../../core/interfaces/services/system/audit.service.interface';
+import { IPaginatedResult } from '../../../shared/types/pagination.type';
+
 import { INoteServiceKey } from '../../../core/interfaces/services/system/note.service.interface';
 import type { INoteService } from '../../../core/interfaces/services/system/note.service.interface';
 
@@ -170,22 +172,14 @@ export class StockTransferService implements IStockTransferService {
         return transfer;
     }
 
-    async getAll(warehouseId?: string, status?: string): Promise<StockTransfer[]> {
-        if (warehouseId && status) {
-            const fromList = await this.transferRepo.findByFromWarehouse(warehouseId);
-            const toList = await this.transferRepo.findByToWarehouse(warehouseId);
-            const all = [...fromList, ...toList];
-            const unique = all.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-            return unique.filter(t => t.status === status);
-        }
-        if (warehouseId) {
-            const fromList = await this.transferRepo.findByFromWarehouse(warehouseId);
-            const toList = await this.transferRepo.findByToWarehouse(warehouseId);
-            const all = [...fromList, ...toList];
-            return all.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-        }
-        if (status) return this.transferRepo.findByStatus(status);
-        return this.transferRepo.findAll();
+    async getAll(filters?: { fromWarehouseId?: string, toWarehouseId?: string, status?: string, search?: string }, options?: { page?: number, limit?: number }): Promise<IPaginatedResult<StockTransfer>> {
+        const page = options?.page || 1;
+        const limit = options?.limit || 12;
+
+        return this.transferRepo.findAllPaginated(
+            { page, limit },
+            filters
+        );
     }
 
     async getById(id: string): Promise<StockTransfer | null> {

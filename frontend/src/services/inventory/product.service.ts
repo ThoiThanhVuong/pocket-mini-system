@@ -1,10 +1,10 @@
 import api from '@/lib/axios';
 import { Product, CreateProductDto, UpdateProductDto } from '@/types/inventory/product';
-import { ApiResponse } from '@/types/common/api';
+import { ApiResponse, PaginatedResult } from '@/types/common/api';
 
 export const ProductService = {
-  async getAllProducts(params?: { search?: string; isActive?: boolean; categoryId?: string }): Promise<Product[]> {
-    const response = await api.get<ApiResponse<Product[]>>('/products', { params });
+  async getAllProducts(params?: { search?: string; isActive?: boolean; categoryId?: string; page?: number; limit?: number }): Promise<PaginatedResult<Product>> {
+    const response = await api.get<ApiResponse<PaginatedResult<Product>>>('/products', { params });
     return response.data.data;
   },
 
