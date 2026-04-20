@@ -4,7 +4,7 @@ import { Column, Entity, OneToMany } from "typeorm";
 
 @Entity('suppliers')
 export class Supplier extends BaseEntity{
-    @Column({name:'name'})
+    @Column({name:'name', unique: true})
     name:string;
 
     @Column({name:'contact_person'})

@@ -8,6 +8,7 @@ export interface ICategoryService {
     getCategoryById(id: string): Promise<Category | null>;
     getAllCategories(search?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Category>>;
     getChildren(parentId: string): Promise<Category[]>;
+    getDescendantIds(parentId: string): Promise<string[]>;
 }
 
 export const ICategoryServiceKey = 'ICategoryService';

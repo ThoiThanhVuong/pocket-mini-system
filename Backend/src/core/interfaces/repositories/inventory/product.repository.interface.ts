@@ -5,5 +5,5 @@ import { IBaseRepository } from "../base.repository.interface";
 export interface IProductRepository extends IBaseRepository<Product>{
     findBySku(sku:string):Promise<Product|null>;
     save(product:Product):Promise<Product>;
-    findAllWithFilters(search?:string,isActive?:boolean,categoryId?:string, options?: IPaginationOptions):Promise<IPaginatedResult<Product>>;
+    findAllWithFilters(search?:string, isActive?:boolean, categoryId?: string | string[], options?: IPaginationOptions): Promise<IPaginatedResult<Product>>;
 }

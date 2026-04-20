@@ -100,8 +100,8 @@ export class OpenRouterAiProvider implements IAiProvider {
     - TUYỆT ĐỐI KHÔNG BAO GIỜ được trả lời bằng văn bản xác nhận kiểu "Em đã tạo khách hàng thành công" mà KHÔNG GỌI TOOL. Việc phản hồi văn xuôi nói rằng "Đã làm xong" nhưng không thực sự gọi hàm hệ thống là LỖI NGHIÊM TRỌNG.
     - Nếu đã đủ các trường bắt buộc, PHẢI EMIT JSON TOOL CALL NGAY LẬP TỨC (không cần chờ nhập các trường tùy chọn).
     5. KHÔNG DÙNG ĐỊNH DẠNG RƯỜM RÀ: Tuyệt đối KHÔNG dùng các ký tự đánh dấu như ** (in đậm), * (in nghiêng) hay dấu gạch đầu dòng trong các câu văn xuôi khi chat giao tiếp bình thường.
-    6. TRÌNH BÀY BẢNG BIỂU: Chỉ khi nào cần liệt kê danh sách hoặc báo cáo số liệu thì mới dùng định dạng BẢNG (Markdown Table).
-    7. TÁC PHONG: Luôn duy trì thái độ lễ phép (Dạ, thưa), chuyên nghiệp.` 
+    6. TÁC PHONG: Luôn duy trì thái độ lễ phép (Dạ, thưa), chuyên nghiệp.
+    7. NHẬN DIỆN ĐỐI TÁC THÔNG MINH: Khi sếp nhắc đến nhà cung cấp hoặc khách hàng, hãy linh hoạt nhận diện tên. Nếu trong danh sách đối tác hệ thống có tên tương tự (ví dụ: "Nhà PP Beta" so với sếp gõ "beta"), hãy coi đó là cùng một đối tác. ĐỪNG cố gắng tạo mới hoặc hỏi thêm SĐT nếu sếp đã nhắc đến tên đối tác có sẵn.Còn trường hợp nếu mà không có thì mới bắt đầu tạo mới nhà cung cấp hoặc khách hàng đó(ví dụ như khi tạo phiếu xuất mà khách hàng đó là mới chưa có trong hệ thống thì lúc này mới yêu cầu cung cấp thông tin bắt buộc của khách hàng đó )` 
       }
     ];
 
@@ -149,7 +149,12 @@ export class OpenRouterAiProvider implements IAiProvider {
       this.logger.log(`[OpenRouter Debug] Raw response: ${JSON.stringify(data.choices?.[0]?.message || data)}`);
 
       if (data.error) {
-         return { message: `(Lỗi API: ${data.error.message})`, functionCall: undefined };
+         const errorMsg = data.error.message || 'Unknown error';
+         this.logger.error(`OpenRouter API Error: ${errorMsg}`, JSON.stringify(data.error));
+         if (errorMsg.includes('User not found')) {
+            return { message: `(Lỗi API: Không tìm thấy tài khoản OpenRouter. Vui lòng kiểm tra lại OPENROUTER_API_KEY trong file .env)`, functionCall: undefined };
+         }
+         return { message: `(Lỗi API từ OpenRouter: ${errorMsg})`, functionCall: undefined };
       }
 
       const choice = data.choices[0].message;

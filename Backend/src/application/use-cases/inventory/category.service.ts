@@ -105,4 +105,16 @@ export class CategoryService implements ICategoryService {
     async getChildren(parentId: string): Promise<Category[]> {
         return await this.repo.findByParentId(parentId);
     }
+
+    async getDescendantIds(parentId: string): Promise<string[]> {
+        const ids: string[] = [parentId];
+        const children = await this.repo.findByParentId(parentId);
+        
+        for (const child of children) {
+            const childDescendants = await this.getDescendantIds(child.id);
+            ids.push(...childDescendants);
+        }
+        
+        return Array.from(new Set(ids)); // Ensure unique IDs
+    }
 }

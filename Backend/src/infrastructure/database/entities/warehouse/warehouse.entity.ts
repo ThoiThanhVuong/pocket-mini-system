@@ -8,7 +8,7 @@ import { User } from "../iam/user.entity";
 
 @Entity('warehouses')
 export class Warehouse extends BaseEntity{
-    @Column({name:'name',nullable:false})
+    @Column({name:'name',nullable:false, unique: true})
     name:string;
 
     @Column({name:'location'})

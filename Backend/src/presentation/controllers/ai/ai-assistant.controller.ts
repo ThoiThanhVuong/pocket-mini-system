@@ -12,25 +12,25 @@ export class AiAssistantController {
 
   @Post('chat')
   async chat(@Body('message') message: string, @Body('threadId') threadId: string, @Req() req: any) {
-    const userId = req.user?.id || 'test-user-id';
+    const userId = req.user?.id || (req.user as any)?._id || 'test-user-id';
     return await this.aiAssistantService.handleChat(userId, message, threadId);
   }
 
   @Get('history')
   async getHistory(@Query('threadId') threadId: string, @Req() req: any) {
-    const userId = req.user?.id || 'test-user-id';
+    const userId = req.user?.id || (req.user as any)?._id || 'test-user-id';
     return await this.aiAssistantService.getChatHistory(userId, threadId);
   }
 
   @Get('threads')
   async getThreads(@Req() req: any) {
-    const userId = req.user?.id || 'test-user-id';
+    const userId = req.user?.id || (req.user as any)?._id || 'test-user-id';
     return await this.aiAssistantService.getUserThreads(userId);
   }
 
   @Delete('threads/:threadId')
   async deleteThread(@Param('threadId') threadId: string, @Req() req: any) {
-    const userId = req.user?.id || 'test-user-id';
+    const userId = req.user?.id || (req.user as any)?._id || 'test-user-id';
     await this.aiAssistantService.deleteThread(userId, threadId);
     return { success: true, message: 'Đã xóa đoạn chat' };
   }

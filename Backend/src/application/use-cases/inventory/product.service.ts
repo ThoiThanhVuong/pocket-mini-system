@@ -2,6 +2,8 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import type { IProductRepository } from "../../../core/interfaces/repositories/inventory/product.repository.interface";
 import type { IStockRepository } from "../../../core/interfaces/repositories/inventory/stock.repository.interface";
 import { IProductService } from "../../../core/interfaces/services/inventory/product.service.interface";
+import { ICategoryServiceKey } from "../../../core/interfaces/services/inventory/category.service.interface";
+import type { ICategoryService } from "../../../core/interfaces/services/inventory/category.service.interface";
 import { Product } from "../../../core/domain/entities/warehouse/product.entity";
 import { CreateProductDto } from "../../dtos/catalog/create-product.dto";
 import { UpdateProductDto } from "../../dtos/catalog/update-product.dto";
@@ -14,6 +16,8 @@ export class ProductService implements IProductService{
         private readonly productRepo: IProductRepository,
         @Inject('IStockRepository')
         private readonly stockRepo: IStockRepository,
+        @Inject(ICategoryServiceKey)
+        private readonly categoryService: ICategoryService,
     ){}
     async createProduct(name: string, sku: string, price: number, description: string, image: string, categoryId: string, unit: string, minStock: number): Promise<Product> {
         const existingProduct = await this.productRepo.findBySku(sku);
@@ -88,11 +92,19 @@ export class ProductService implements IProductService{
     }
 
     async getAllProducts(search?: string, isActive?: boolean, categoryId?: string, options?: IPaginationOptions): Promise<IPaginatedResult<Product>> {
-        return await this.productRepo.findAllWithFilters(search, isActive, categoryId, options);
+        let categoryIds: string[] | undefined = undefined;
+        if (categoryId) {
+            categoryIds = await this.categoryService.getDescendantIds(categoryId);
+        }
+        return await this.productRepo.findAllWithFilters(search, isActive, categoryIds || categoryId, options);
     }
 
     async countProducts(search?: string, isActive?: boolean, categoryId?: string): Promise<number> {
-        const products = await this.productRepo.findAllWithFilters(search, isActive, categoryId);
+        let categoryIds: string[] | undefined = undefined;
+        if (categoryId) {
+            categoryIds = await this.categoryService.getDescendantIds(categoryId);
+        }
+        const products = await this.productRepo.findAllWithFilters(search, isActive, categoryIds || categoryId);
         return products.meta.totalItems;
     }
 

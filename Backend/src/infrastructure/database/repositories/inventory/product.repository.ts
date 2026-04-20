@@ -53,8 +53,12 @@ export class ProductRepository implements IProductRepository{
         if(isActive !==undefined){
             query.andWhere('product.isActive =:isActive',{isActive})
         }
-        if(categoryId){
-            query.andWhere('product.categoryId =:categoryId',{categoryId})
+        if (categoryId) {
+            if (Array.isArray(categoryId)) {
+                query.andWhere('product.categoryId IN (:...categoryIds)', { categoryIds: categoryId });
+            } else {
+                query.andWhere('product.categoryId = :categoryId', { categoryId });
+            }
         }
         
         let totalItems = 0;

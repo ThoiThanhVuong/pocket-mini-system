@@ -9,7 +9,7 @@ export class Customer extends BaseEntity{
     @Column({name:'phone'})
     phone:string;
 
-    @Column({name:'email'})
+    @Column({name:'email', unique: true})
     email:string;
 
     @Column({name:'address'})

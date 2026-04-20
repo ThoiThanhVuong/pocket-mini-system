@@ -66,22 +66,39 @@ export class ExcelService {
         
         if (!worksheet) return [];
 
-        const headerRow = worksheet.getRow(1);
+        // Get headers from row 1 robustly
+        const headerRowValues = worksheet.getRow(1).values as any[];
         const headers: string[] = [];
-        headerRow.eachCell((cell) => {
-            headers.push(cell.value?.toString() || '');
-        });
+        // headers start from index 1 in ExcelJS values array
+        for (let i = 1; i < headerRowValues.length; i++) {
+            const val = headerRowValues[i];
+            headers.push(val ? val.toString().trim() : '');
+        }
 
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip headers
             const item: any = {};
-            row.eachCell((cell, colNumber) => {
-                const header = headers[colNumber - 1];
-                if (header) {
-                    item[header] = cell.value;
+            const rowValues = row.values as any[];
+            
+            headers.forEach((header, index) => {
+                if (!header) return;
+                const cellValue = rowValues[index + 1];
+                // Clean up value: trim if string
+                let value = cellValue;
+                if (typeof cellValue === 'string') {
+                    value = cellValue.trim();
+                } else if (cellValue && typeof cellValue === 'object' && 'text' in cellValue) {
+                    // Handle RichText or other objects
+                    value = (cellValue as any).text.toString().trim();
                 }
+                
+                item[header] = value;
             });
-            data.push(item);
+            
+            // Only add if row is not completely empty
+            if (Object.values(item).some(v => v !== null && v !== undefined && v !== '')) {
+                data.push(item);
+            }
         });
 
         return data;

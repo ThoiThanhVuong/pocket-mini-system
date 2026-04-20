@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Upload, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Upload, Loader2, FileSpreadsheet, Download } from 'lucide-react';
 import api from '@/lib/axios';
 import { toast } from 'sonner';
 import { Can } from '@/components/common/Can';
@@ -23,6 +23,7 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const handleDownloadTemplate = async () => {
     if (!templateEndpoint) return;
@@ -37,6 +38,7 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success('Đã tải file mẫu');
     } catch (error) {
       toast.error('Không thể tải file mẫu');
     } finally {
@@ -73,33 +75,66 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
     }
   };
 
-  const buttonContent = (
-    <motion.button
-      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center shadow-sm disabled:opacity-50 h-[40px]"
-      whileHover={isImporting ? {} : { scale: 1.05 }}
-      whileTap={isImporting ? {} : { scale: 0.95 }}
-      onClick={() => fileInputRef.current?.click()}
-      disabled={isImporting}
-    >
-      {isImporting ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Upload size={18} className="mr-2" />}
-      {isImporting ? 'Đang nhập...' : buttonText}
-    </motion.button>
+  const mainButton = (
+    <div className="relative group">
+      <motion.button
+        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-l-lg flex items-center shadow-lg shadow-emerald-500/20 disabled:opacity-50 h-[42px] font-medium transition-all"
+        whileHover={isImporting ? {} : { x: -2 }}
+        whileTap={isImporting ? {} : { scale: 0.98 }}
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isImporting}
+        onMouseEnter={() => setHovered('import')}
+        onMouseLeave={() => setHovered(null)}
+      >
+        {isImporting ? (
+          <Loader2 size={18} className="mr-2 animate-spin" />
+        ) : (
+          <Upload size={18} className="mr-2" />
+        )}
+        <span className="whitespace-nowrap">{isImporting ? 'Đang nhập...' : buttonText}</span>
+      </motion.button>
+    </div>
   );
 
-  const templateLink = templateEndpoint && (
-    <button 
-      onClick={handleDownloadTemplate}
-      disabled={isDownloadingTemplate}
-      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mt-1 underline block w-full text-center disabled:opacity-50"
-    >
-      {isDownloadingTemplate ? 'Đang tải...' : 'Tải file mẫu'}
-    </button>
+  const templateButton = templateEndpoint && (
+    <div className="relative border-l border-emerald-500/30">
+      <motion.button
+        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-r-lg flex items-center justify-center shadow-lg shadow-emerald-500/20 disabled:opacity-50 h-[42px] transition-all"
+        whileHover={isDownloadingTemplate ? {} : { x: 2 }}
+        whileTap={isDownloadingTemplate ? {} : { scale: 0.98 }}
+        onClick={handleDownloadTemplate}
+        disabled={isDownloadingTemplate}
+        onMouseEnter={() => setHovered('template')}
+        onMouseLeave={() => setHovered(null)}
+        title="Tải file mẫu Excel"
+      >
+        {isDownloadingTemplate ? (
+          <Loader2 size={18} className="animate-spin" />
+        ) : (
+          <FileSpreadsheet size={18} />
+        )}
+      </motion.button>
+      
+      <AnimatePresence>
+        {hovered === 'template' && !isDownloadingTemplate && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.9 }}
+            className="absolute top-[-40px] right-0 bg-gray-900 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-50 shadow-xl pointer-events-none"
+          >
+            Tải file mẫu
+            <div className="absolute bottom-[-4px] right-3 w-2 h-2 bg-gray-900 rotate-45" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 
-  const buttonWithTemplate = (
-    <div className="flex flex-col items-center">
-      {buttonContent}
-      {templateLink}
+  const buttonGroup = (
+    <div className="flex items-center">
+      {mainButton}
+      {templateButton}
     </div>
   );
 
@@ -113,19 +148,21 @@ export const ExcelImportButton: React.FC<ExcelImportButtonProps> = ({
     />
   );
 
+  const content = (
+    <>
+      {inputRender}
+      {buttonGroup}
+    </>
+  );
+
   if (permission) {
     return (
       <Can permission={permission}>
-        {inputRender}
-        {buttonWithTemplate}
+        {content}
       </Can>
     );
   }
 
-  return (
-    <>
-      {inputRender}
-      {buttonWithTemplate}
-    </>
-  );
+  return content;
 };
+

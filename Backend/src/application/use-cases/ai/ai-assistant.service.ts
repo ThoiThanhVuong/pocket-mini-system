@@ -216,14 +216,19 @@ export class AiAssistantService implements IAiAssistantService {
       const currentYear = now.getFullYear();
       const attendancePromise = this.attendanceService.getHistory(userId, currentMonth, currentYear);
       const payrollPromise = this.payrollService.getPayroll(userId, currentMonth, currentYear);
+      
+      const allSuppliersPromise = this.supplierService.getAllSuppliers();
+      const allCustomersPromise = this.customerService.getAllCustomers();
 
-      const [allStock, allProducts, allWarehouses, salesReport, attendanceHistory, payroll] = await Promise.all([
+      const [allStock, allProducts, allWarehouses, salesReport, attendanceHistory, payroll, allSuppliers, allCustomers] = await Promise.all([
         allStockPromise,
         allProductsPromise,
         allWarehousesPromise,
         salesReportPromise,
         attendancePromise,
-        payrollPromise
+        payrollPromise,
+        allSuppliersPromise,
+        allCustomersPromise
       ]);
 
       // --- Formatting Context ---
@@ -256,19 +261,22 @@ export class AiAssistantService implements IAiAssistantService {
         context += `- Lương tạm tính tháng này: ${payroll.totalSalary} (Trạng thái: ${payroll.status})\n`;
       }
 
+      // Đối tác
+      context += `\nDANH SÁCH ĐỐI TÁC (Dùng để tra cứu khi sếp yêu cầu tạo phiếu):\n`;
+      context += `- Nhà cung cấp: ${(allSuppliers.items || []).map(s => s.name).join(', ') || 'Chưa có'}\n`;
+      context += `- Khách hàng: ${(allCustomers.items || []).map(c => c.name).join(', ') || 'Chưa có'}\n`;
+
       return context;
-    } catch (error) {
-      this.logger.error('Error fetching unified context:', error);
-      return 'Lỗi khi tải dữ liệu hệ thống chuyên sâu.';
+    } catch (error: any) {
+      this.logger.error(`Error fetching unified context for user ${userId}: ${error.message}`, error.stack);
+      return `Lỗi khi tải dữ liệu hệ thống (Chi tiết: ${error.message}). Một số thông tin có thể bị thiếu.`;
     }
   }
 
   private async executeTool(userId: string, name: string, args: any): Promise<string> {
     if (name === 'create_stock_in_slip') {
       const { items, supplierName, warehouseName } = args;
-      const suppliers = await this.supplierService.getAllSuppliers(supplierName);
-      if (!suppliers || suppliers.items.length === 0) throw new Error(`Không tìm thấy nhà cung cấp nào tên "${supplierName}".`);
-      const supplier = suppliers.items[0];
+      const supplier = await this.getSupplierByName(supplierName);
       const warehouse = await this.getWarehouseByName(userId, warehouseName);
       const slipItems = await this.resolveItems(items);
       const referenceCode = `AI-IN-${this.genId()}`;
@@ -279,9 +287,7 @@ export class AiAssistantService implements IAiAssistantService {
 
     if (name === 'create_stock_out_slip') {
       const { items, customerName, warehouseName } = args;
-      const customers = await this.customerService.getAllCustomers(customerName);
-      if (!customers || customers.items.length === 0) throw new Error(`Không tìm thấy khách hàng nào tên "${customerName}".`);
-      const customer = customers.items[0];
+      const customer = await this.getCustomerByName(customerName);
       const warehouse = await this.getWarehouseByName(userId, warehouseName);
       const slipItems = await this.resolveItems(items);
       const referenceCode = `AI-OUT-${this.genId()}`;
@@ -338,6 +344,49 @@ export class AiAssistantService implements IAiAssistantService {
        throw new Error('Hệ thống hiện chưa có kho hàng nào.');
     }
     return warehouse;
+  }
+
+  private async getSupplierByName(name: string) {
+    const originalName = name.trim();
+    // Chuẩn hóa: loại bỏ các tiền tố phổ biến
+    const prefixes = ['nhà cung cấp', 'nhà pp', 'npp', 'ncc', 'đối tác'];
+    let normalized = originalName.toLowerCase();
+    for (const p of prefixes) {
+      if (normalized.startsWith(p)) {
+        normalized = normalized.replace(p, '').trim();
+        break;
+      }
+    }
+
+    // 1. Tìm chính xác tuyệt đối (ILIKE xử lý trong repo)
+    let suppliers = await this.supplierService.getAllSuppliers(normalized);
+    if (suppliers.items.length > 0) return suppliers.items[0];
+
+    // 2. Tìm theo tên gốc (nếu chuẩn hóa không ra)
+    suppliers = await this.supplierService.getAllSuppliers(originalName);
+    if (suppliers.items.length > 0) return suppliers.items[0];
+
+    throw new Error(`Dạ sếp ơi, em không tìm thấy nhà cung cấp nào có tên tương tự như "${originalName}" ạ.`);
+  }
+
+  private async getCustomerByName(name: string) {
+    const originalName = name.trim();
+    const prefixes = ['khách hàng', 'khách', 'đại lý', 'cửa hàng', 'anh', 'chị'];
+    let normalized = originalName.toLowerCase();
+    for (const p of prefixes) {
+      if (normalized.startsWith(p)) {
+        normalized = normalized.replace(p, '').trim();
+        break;
+      }
+    }
+
+    let customers = await this.customerService.getAllCustomers(normalized);
+    if (customers.items.length > 0) return customers.items[0];
+
+    customers = await this.customerService.getAllCustomers(originalName);
+    if (customers.items.length > 0) return customers.items[0];
+
+    throw new Error(`Dạ sếp ơi, em không tìm thấy khách hàng nào có tên tương tự như "${originalName}" ạ.`);
   }
 
   private async resolveItems(items: any[]): Promise<{ productId: string, productName: string, quantity: number, price: number }[]> {

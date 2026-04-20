@@ -18,7 +18,7 @@ import { DatabaseSeeder } from './database.seeder';
           database: configService.get<string>('database.name'),
           // Các tùy chọn khác
           autoLoadEntities: true,
-          synchronize: true, // Dev only
+          synchronize: false, 
           logging: true,
         };
       },

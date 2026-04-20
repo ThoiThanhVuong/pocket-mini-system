@@ -1,3 +1,4 @@
+import { ILike } from 'typeorm';
 import {
     Controller, Post, Get, Put, Delete, Patch,
     Body, Param, Query, Inject, UseGuards, NotFoundException, Req, Res,
@@ -12,6 +13,9 @@ import { AuthGuard } from '@nestjs/passport';
 import { IProductServiceKey } from '../../../core/interfaces/services/inventory/product.service.interface';
 import type { IProductService } from '../../../core/interfaces/services/inventory/product.service.interface';
 import type { IStockRepository } from '../../../core/interfaces/repositories/inventory/stock.repository.interface';
+import type { ICategoryRepository } from '../../../core/interfaces/repositories/inventory/category.repository.interface';
+import { ICategoryServiceKey } from '../../../core/interfaces/services/inventory/category.service.interface';
+import type { ICategoryService } from '../../../core/interfaces/services/inventory/category.service.interface';
 import { CreateProductDto } from '../../../application/dtos/catalog/create-product.dto';
 import { UpdateProductDto } from '../../../application/dtos/catalog/update-product.dto';
 import { ProductMapper } from '../../../application/mappers/product.mapper';
@@ -27,34 +31,98 @@ export class ProductController {
         private readonly productService: IProductService,
         @Inject('IStockRepository')
         private readonly stockRepo: IStockRepository,
+        @Inject('ICategoryRepository')
+        private readonly categoryRepo: ICategoryRepository,
+        @Inject(ICategoryServiceKey)
+        private readonly categoryService: ICategoryService,
+        @Inject(ExcelService)
+        private readonly excelService: ExcelService,
     ) {}
 
     // POST /products/import
     @Post('import')
     @RequirePermissions(PermissionCode.PRODUCT_CREATE)
     @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
-    async importProducts(@UploadedFile() file: any, @Inject(ExcelService) excelService: ExcelService) {
+    async importProducts(@UploadedFile() file: any) {
         if (!file) throw new HttpException('File không hợp lệ', HttpStatus.BAD_REQUEST);
-        const data = await excelService.parseExcel(file.buffer);
-        let count = 0;
+        const data = await this.excelService.parseExcel(file.buffer);
+        console.log(`[Import] Bắt đầu xử lý ${data.length} hàng dữ liệu (Chế độ Upsert).`);
+        
+        let createdCount = 0;
+        let updatedCount = 0;
+        let errorCount = 0;
+        let rowIndex = 0;
+        const categoryCache = new Map<string, string>();
+
         for (const row of data) {
+            rowIndex++;
             try {
-                await this.productService.createProduct(
-                    row['Tên sản phẩm'] || row['name'] || 'New Product',
-                    row['Mã SKU'] || row['sku'] || `SKU-${Date.now()}-${count}`,
-                    Number(row['Giá'] || row['price'] || 0),
-                    row['Mô tả'] || row['description'] || '',
-                    '', // image
-                    row['Mã danh mục'] || row['categoryId'] || '', 
-                    row['Đơn vị'] || row['unit'] || 'Cái',
-                    Number(row['Tồn kho tối thiểu'] || row['minStockLevel'] || 0)
-                );
-                count++;
-            } catch (e) {
-                console.error('Import error for row:', row, e);
+                const skuValue = row['Mã SKU'] || row['sku'];
+                const sku = skuValue ? skuValue.toString().trim() : `SKU-${Date.now()}-${rowIndex}`;
+                
+                // Tiền xử lý Danh mục
+                const categoryInput = (row['Mã danh mục'] || row['categoryId'] || '').toString().trim();
+                let categoryId: string | null = null;
+
+                if (categoryInput) {
+                    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryInput);
+                    if (isUuid) {
+                        categoryId = categoryInput;
+                    } else {
+                        const lowerName = categoryInput.toLowerCase();
+                        if (categoryCache.has(lowerName)) {
+                            categoryId = categoryCache.get(lowerName)!;
+                        } else {
+                            const category = await this.categoryRepo.findByCondition({ name: ILike(categoryInput) });
+                            if (category) {
+                                categoryId = category.id;
+                                categoryCache.set(lowerName, categoryId);
+                            } else {
+                                console.log(`[Import] Tạo mới danh mục: "${categoryInput}"`);
+                                const newCategory = await this.categoryService.createCategory(categoryInput);
+                                categoryId = newCategory.id;
+                                categoryCache.set(lowerName, categoryId);
+                            }
+                        }
+                    }
+                }
+
+                // Kiểm tra xem sản phẩm đã tồn tại chưa
+                const existingProduct = await (this.productService as any).productRepo.findBySku(sku);
+                
+                if (existingProduct) {
+                    // Cập nhật sản phẩm cũ
+                    await this.productService.updateProduct(existingProduct.id, {
+                        name: (row['Tên sản phẩm'] || row['name'] || existingProduct.name).toString().trim(),
+                        price: Number(row['Giá'] || row['price'] || existingProduct.price),
+                        description: (row['Mô tả'] || row['description'] || existingProduct.description).toString().trim(),
+                        categoryId: categoryId || existingProduct.categoryId,
+                        unit: (row['Đơn vị'] || row['unit'] || existingProduct.unit).toString().trim(),
+                        minStockLevel: Number(row['Tồn kho tối thiểu'] || row['minStockLevel'] || existingProduct.minStockLevel)
+                    });
+                    updatedCount++;
+                } else {
+                    // Tạo sản phẩm mới
+                    await this.productService.createProduct(
+                        (row['Tên sản phẩm'] || row['name'] || 'Sản phẩm mới').toString().trim(),
+                        sku,
+                        Number(row['Giá'] || row['price'] || 0),
+                        (row['Mô tả'] || row['description'] || '').toString().trim(),
+                        '', // image
+                        categoryId || '', 
+                        (row['Đơn vị'] || row['unit'] || 'Cái').toString().trim(),
+                        Number(row['Tồn kho tối thiểu'] || row['minStockLevel'] || 0)
+                    );
+                    createdCount++;
+                }
+            } catch (e: any) {
+                console.error(`[Import Error] Hàng ${rowIndex}:`, e.message || e);
+                errorCount++;
             }
         }
-        return { message: `Đã nhập thành công ${count} sản phẩm.` };
+        return { 
+            message: `Nhập dữ liệu hoàn tất: Tạo mới ${createdCount}, Cập nhật ${updatedCount}, Lỗi ${errorCount} sản phẩm.` 
+        };
     }
 
     // POST /products
@@ -120,6 +188,28 @@ export class ProductController {
         };
     }
 
+    // GET /products/import-template
+    @Get('import-template')
+    @RequirePermissions(PermissionCode.PRODUCT_CREATE)
+    async getImportTemplate(@Res() res: ExpressResponse) {
+        const headers = [
+            'Tên sản phẩm', 
+            'Mã SKU', 
+            'Giá', 
+            'Mô tả', 
+            'Mã danh mục', 
+            'Đơn vị', 
+            'Tồn kho tối thiểu'
+        ];
+        const buffer = await this.excelService.generateTemplate('Mẫu nhập sản phẩm', headers);
+        
+        res.set({
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="Mau-nhap-san-pham.xlsx"',
+        });
+        res.send(buffer);
+    }
+
     // GET /products/:id
     @Get(':id')
     @RequirePermissions(PermissionCode.PRODUCT_VIEW)
@@ -167,25 +257,5 @@ export class ProductController {
         return { message: 'Xóa sản phẩm thành công' };
     }
 
-    // GET /products/import-template
-    @Get('import-template')
-    @RequirePermissions(PermissionCode.PRODUCT_CREATE)
-    async getImportTemplate(@Res() res: ExpressResponse, @Inject(ExcelService) excelService: ExcelService) {
-        const headers = [
-            'Tên sản phẩm', 
-            'Mã SKU', 
-            'Giá', 
-            'Mô tả', 
-            'Mã danh mục', 
-            'Đơn vị', 
-            'Tồn kho tối thiểu'
-        ];
-        const buffer = await excelService.generateTemplate('Mẫu nhập sản phẩm', headers);
-        
-        res.set({
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': 'attachment; filename="Mau-nhap-san-pham.xlsx"',
-        });
-        res.send(buffer);
-    }
+
 }

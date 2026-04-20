@@ -21,6 +21,12 @@ export class DatabaseSeeder implements OnApplicationBootstrap {
     // Đoạn script tự động đổ data permissions, roles và gán admin bạn cung cấp
     const sql = `
 -- 0. Cleanup Duplicates
+DELETE FROM "customers" a USING "customers" b WHERE a.id < b.id AND a.email = b.email;
+DELETE FROM "warehouses" a USING "warehouses" b WHERE a.id < b.id AND a.name = b.name;
+DELETE FROM "categories" a USING "categories" b WHERE a.id < b.id AND a.name = b.name;
+DELETE FROM "suppliers" a USING "suppliers" b WHERE a.id < b.id AND a.name = b.name;
+
+-- 0.1 Cleanup Permissions Duplicates
 DELETE FROM "permissions" WHERE "permission_code" IN ('stock_in.completed', 'stock_out.completed', 'stock_transfer.completed');
 
 -- 1. Insert Permissions
