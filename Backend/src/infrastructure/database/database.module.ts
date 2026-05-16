@@ -9,16 +9,26 @@ import { DatabaseSeeder } from './database.seeder';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
+        const url = configService.get<string>('database.url');
+        const isNeon = url?.includes('neon.tech');
+        const explicitSsl = configService.get<boolean>('database.ssl');
+
         return {
           type: 'postgres',
-          host: configService.get<string>('database.host'),
-          port: configService.get<number>('database.port'),
-          username: configService.get<string>('database.username'),
-          password: configService.get<string>('database.password'),
-          database: configService.get<string>('database.name'),
+          ...(url 
+            ? { url } 
+            : {
+                host: configService.get<string>('database.host'),
+                port: configService.get<number>('database.port'),
+                username: configService.get<string>('database.username'),
+                password: configService.get<string>('database.password'),
+                database: configService.get<string>('database.name'),
+              }
+          ),
+          ssl: isNeon || explicitSsl ? { rejectUnauthorized: false } : false,
           // Các tùy chọn khác
           autoLoadEntities: true,
-          synchronize: false, 
+          synchronize: configService.get<boolean>('database.sync') ?? false, 
           logging: true,
         };
       },
